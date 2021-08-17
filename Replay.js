@@ -180,12 +180,13 @@
       }
 
       static fromBuffer(buffer) {
-        var decompressed, header, lzmaBuffer, reader, replay;
+        var decompressed, header, lzmaBuffer, reader, replay, restBuffer;
         reader = new ReplayReader(buffer);
         header = Replay.readHeader(reader);
-        lzmaBuffer = Buffer.concat([header.getLzmaHeader(), reader.readAll()]);
-        if (header.isCompressed) {
-          decompressed = lzmaBuffer;
+        restBuffer = reader.readAll();
+        lzmaBuffer = Buffer.concat([header.getLzmaHeader(), restBuffer]);
+        if (!header.isCompressed) {
+          decompressed = restBuffer;
         } else {
           decompressed = Buffer.from(lzma.decompress(lzmaBuffer));
         }

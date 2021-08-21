@@ -85,6 +85,7 @@ combine_full:
       $SOURCE_IMAGE_2
     - docker manifest push $TARGET_IMAGE
 
+#upload_stuff_to_minio:
 #  stage: deploy
 #  tags:
 #    - linux
@@ -99,6 +100,23 @@ combine_full:
 #  only:
 #    - master
 
+deploy_latest_full:
+  stage: deploy
+  tags:
+    - docker
+  script:
+    - TARGET_IMAGE_2=$CONTAINER_RELEASE_IMAGE
+    - TARGET_IMAGE=$CONTAINER_RELEASE_IMAGE_FULL
+    - SOURCE_IMAGE=$CONTAINER_TEST_IMAGE_FULL
+    - docker pull $SOURCE_IMAGE
+    - docker tag $SOURCE_IMAGE $TARGET_IMAGE
+    - docker push $TARGET_IMAGE
+    - docker tag $SOURCE_IMAGE $TARGET_IMAGE_2
+    - docker push $TARGET_IMAGE_2
+  only:
+    - master
+deploy_latest_lite:
+  stage: deploy
   tags:
     - docker
   script:

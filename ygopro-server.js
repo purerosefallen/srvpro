@@ -832,9 +832,9 @@
             continue;
           }
           time_passed = Math.floor(moment_now.diff(room.last_active_time) / 1000);
-          //log.info time_passed
+          //log.info time_passed, moment_now_string
           if (time_passed >= settings.modules.random_duel.hang_timeout) {
-            room.last_active_time = moment_now_string;
+            room.refreshLastActiveTime();
             await ROOM_ban_player(room.waiting_for_player.name, room.waiting_for_player.ip, "${random_ban_reason_AFK}");
             room.scores[room.waiting_for_player.name_vpass] = -9;
             //log.info room.waiting_for_player.name, room.scores[room.waiting_for_player.name_vpass]
@@ -859,7 +859,7 @@
           time_passed = Math.floor(moment_now.diff(room.last_active_time) / 1000);
           //log.info time_passed
           if (time_passed >= settings.modules.random_duel.hang_timeout) {
-            room.last_active_time = moment_now_string;
+            room.refreshLastActiveTime();
             ygopro.stoc_send_chat_to_room(room, `${room.waiting_for_player.name} \${kicked_by_system}`, ygopro.constants.COLORS.RED);
             room.scores[room.waiting_for_player.name_vpass] = -9;
             //log.info room.waiting_for_player.name, room.scores[room.waiting_for_player.name_vpass]
@@ -1579,7 +1579,7 @@
     client.established = true;
     client.pre_establish_buffers = [];
     if (room.random_type || room.arena) {
-      room.last_active_time = moment_now_string;
+      room.refreshLastActiveTime();
     }
     CLIENT_import_data(client, dinfo.old_client, room);
     CLIENT_send_reconnect_info(client, client.server, room);
@@ -1611,7 +1611,7 @@
     client.established = true;
     client.pre_establish_buffers = [];
     if (room.random_type || room.arena) {
-      room.last_active_time = moment_now_string;
+      room.refreshLastActiveTime();
     }
     CLIENT_import_data(client, player, room);
     CLIENT_send_reconnect_info(client, client.server, room);
@@ -2419,7 +2419,7 @@
           this.finished = true;
           if (!this.finished_by_death) {
             this.scores[client.name_vpass] = -9;
-            if (this.random_type && !client.flee_free && (!settings.modules.reconnect.enabled || this.get_disconnected_count() === 0)) {
+            if (this.random_type && !client.flee_free && (!settings.modules.reconnect.enabled || this.get_disconnected_count() === 0) && !client.kicked_by_system && !client.kicked_by_player) {
               ROOM_ban_player(client.name, client.ip, "${random_ban_reason_flee}");
               if (settings.modules.random_duel.record_match_scores && this.random_type === 'M') {
                 ROOM_player_flee(client.name_vpass);
@@ -2650,6 +2650,14 @@
         results.push(ygopro.stoc_send_chat_to_room(this, line, ygopro.constants.COLORS.PINK));
       }
       return results;
+    }
+
+    refreshLastActiveTime(longAgo) {
+      if (longAgo) {
+        return this.last_active_time = moment_long_ago_string;
+      } else {
+        return this.last_active_time = moment_now_string;
+      }
     }
 
   };
@@ -3596,7 +3604,7 @@
         return true;
       } else {
         room.waiting_for_player = client;
-        room.last_active_time = moment_now_string;
+        room.refreshLastActiveTime();
       }
     }
     //log.info("#{msg_name}等待#{room.waiting_for_player.name}")
@@ -4152,6 +4160,7 @@
   wait_room_start = async function(room, time) {
     var j, len, player, ref;
     if (room && room.duel_stage === ygopro.constants.DUEL_STAGE.BEGIN && room.ready_player_count_without_host >= room.max_player - 1) {
+      //log.info('wait room start', time)
       time -= 1;
       if (time) {
         if (!(time % 5)) {
@@ -4443,7 +4452,7 @@
     msg = _.trim(info.msg);
     cancel = _.startsWith(msg, "/");
     if (!(cancel || !(room.random_type || room.arena) || room.duel_stage === ygopro.constants.DUEL_STAGE.FINGER || room.duel_stage === ygopro.constants.DUEL_STAGE.FIRSTGO || room.duel_stage === ygopro.constants.DUEL_STAGE.SIDING)) {
-      room.last_active_time = moment_now_string;
+      room.refreshLastActiveTime();
     }
     cmd = msg.split(' ');
     isVip = (await CLIENT_check_vip(client));
@@ -4823,7 +4832,7 @@
       if (client.pos === 0) {
         room.waiting_for_player = room.waiting_for_player2;
       }
-      room.last_active_time = moment_now_string;
+      room.refreshLastActiveTime();
     }
     if (room.duel_stage === ygopro.constants.DUEL_STAGE.BEGIN && room.recovering) {
       recover_player_data = _.find(room.recover_duel_log.players, function(player) {
@@ -4902,7 +4911,7 @@
     if (!(room && (room.random_type || room.arena))) {
       return;
     }
-    room.last_active_time = moment_now_string;
+    room.refreshLastActiveTime();
   });
 
   ygopro.stoc_follow('TIME_LIMIT', true, async function(buffer, info, client, server, datas) {
@@ -5001,7 +5010,7 @@
       if (client.pos === 0) {
         room.waiting_for_player = room.waiting_for_player2;
       }
-      room.last_active_time = moment_long_ago_string;
+      room.refreshLastActiveTime(true);
     }
   });
 
@@ -5016,7 +5025,7 @@
     if (!(room.random_type || room.arena)) {
       return;
     }
-    room.last_active_time = moment_now_string;
+    room.refreshLastActiveTime();
   });
 
   ygopro.stoc_follow('CHAT', true, async function(buffer, info, client, server, datas) {
@@ -5073,7 +5082,7 @@
       } else {
         room.waiting_for_player2 = client;
       }
-      room.last_active_time = moment_long_ago_string;
+      room.refreshLastActiveTime(true);
     }
     if (room.determine_firstgo) {
       ygopro.ctos_send(server, "HAND_RESULT", {
@@ -5104,7 +5113,7 @@
     room.duel_stage = ygopro.constants.DUEL_STAGE.FIRSTGO;
     if (room.random_type || room.arena) {
       room.waiting_for_player = client;
-      room.last_active_time = moment_now_string;
+      room.refreshLastActiveTime();
     }
     if (room.determine_firstgo) {
       ygopro.ctos_send(server, "TP_RESULT", {
@@ -5173,7 +5182,7 @@
       } else {
         room.waiting_for_player2 = client;
       }
-      room.last_active_time = moment_now_string;
+      room.refreshLastActiveTime();
     }
   });
 

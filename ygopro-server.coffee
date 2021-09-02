@@ -1319,7 +1319,7 @@ getSeedTimet = global.getSeedTimet = (count) ->
     while !curTime or _.any(ret, (time) ->
       return time == curTime.unix()
     )
-      curTime = moment_now
+      curTime = moment()
       offset = Math.floor(Math.random() * 240) - 120
       if offset > 0
         curTime = curTime.add(offset, "s")

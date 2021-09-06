@@ -1400,11 +1400,11 @@ class Room
         @hostinfo.lflist = 0
 
       if (rule.match /(^|，|,)(OR|OCGRANDOM)(，|,|$)/)
-        @hostinfo.rule = 2
+        @hostinfo.rule = 5
         @hostinfo.lflist = 0
 
       if (rule.match /(^|，|,)(CR|CCGRANDOM)(，|,|$)/)
-        @hostinfo.rule = 4
+        @hostinfo.rule = 2
         @hostinfo.lflist = -1
 
       if (rule.match /(^|，|,)(TOR|TCGONLYRANDOM)(，|,|$)/)
@@ -1412,7 +1412,7 @@ class Room
         @hostinfo.lflist = _.findIndex lflists, (list)-> list.tcg
 
       if (rule.match /(^|，|,)(TR|TCGRANDOM)(，|,|$)/)
-        @hostinfo.rule = 2
+        @hostinfo.rule = 5
         @hostinfo.lflist = _.findIndex lflists, (list)-> list.tcg
 
       if (rule.match /(^|，|,)(OOMR|OCGONLYMATCHRANDOM)(，|,|$)/)
@@ -1421,12 +1421,12 @@ class Room
         @hostinfo.mode = 1
 
       if (rule.match /(^|，|,)(OMR|OCGMATCHRANDOM)(，|,|$)/)
-        @hostinfo.rule = 2
+        @hostinfo.rule = 5
         @hostinfo.lflist = 0
         @hostinfo.mode = 1
 
       if (rule.match /(^|，|,)(CMR|CCGMATCHRANDOM)(，|,|$)/)
-        @hostinfo.rule = 4
+        @hostinfo.rule = 2
         @hostinfo.lflist = -1
         @hostinfo.mode = 1
 

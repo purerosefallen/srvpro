@@ -1813,11 +1813,11 @@
           this.hostinfo.lflist = 0;
         }
         if (rule.match(/(^|，|,)(OR|OCGRANDOM)(，|,|$)/)) {
-          this.hostinfo.rule = 2;
+          this.hostinfo.rule = 5;
           this.hostinfo.lflist = 0;
         }
         if (rule.match(/(^|，|,)(CR|CCGRANDOM)(，|,|$)/)) {
-          this.hostinfo.rule = 4;
+          this.hostinfo.rule = 2;
           this.hostinfo.lflist = -1;
         }
         if (rule.match(/(^|，|,)(TOR|TCGONLYRANDOM)(，|,|$)/)) {
@@ -1827,7 +1827,7 @@
           });
         }
         if (rule.match(/(^|，|,)(TR|TCGRANDOM)(，|,|$)/)) {
-          this.hostinfo.rule = 2;
+          this.hostinfo.rule = 5;
           this.hostinfo.lflist = _.findIndex(lflists, function(list) {
             return list.tcg;
           });
@@ -1838,12 +1838,12 @@
           this.hostinfo.mode = 1;
         }
         if (rule.match(/(^|，|,)(OMR|OCGMATCHRANDOM)(，|,|$)/)) {
-          this.hostinfo.rule = 2;
+          this.hostinfo.rule = 5;
           this.hostinfo.lflist = 0;
           this.hostinfo.mode = 1;
         }
         if (rule.match(/(^|，|,)(CMR|CCGMATCHRANDOM)(，|,|$)/)) {
-          this.hostinfo.rule = 4;
+          this.hostinfo.rule = 2;
           this.hostinfo.lflist = -1;
           this.hostinfo.mode = 1;
         }

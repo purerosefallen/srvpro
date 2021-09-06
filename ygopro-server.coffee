@@ -1436,7 +1436,7 @@ class Room
         @hostinfo.mode = 1
 
       if (rule.match /(^|，|,)(TMR|TCGMATCHRANDOM)(，|,|$)/)
-        @hostinfo.rule = 2
+        @hostinfo.rule = 5
         @hostinfo.lflist = _.findIndex lflists, (list)-> list.tcg
         @hostinfo.mode = 1
 

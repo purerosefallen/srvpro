@@ -1855,7 +1855,7 @@
           this.hostinfo.mode = 1;
         }
         if (rule.match(/(^|，|,)(TMR|TCGMATCHRANDOM)(，|,|$)/)) {
-          this.hostinfo.rule = 2;
+          this.hostinfo.rule = 5;
           this.hostinfo.lflist = _.findIndex(lflists, function(list) {
             return list.tcg;
           });

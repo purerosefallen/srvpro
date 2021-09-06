@@ -3365,7 +3365,7 @@ ygopro.ctos_follow 'CHAT', true, (buffer, info, client, server, datas)->
         ygopro.ctos_send(client.server, 'SURRENDER')
       else
         sur_player = CLIENT_get_partner(client)
-        if sur_player.closed or sur_player.is_local
+        if !sur_player or sur_player.closed or sur_player.is_local
           sur_player = client
         if room.hostinfo.mode==2 and sur_player != client
           ygopro.stoc_send_chat(sur_player, "${surrender_confirm_tag}", ygopro.constants.COLORS.BABYBLUE)

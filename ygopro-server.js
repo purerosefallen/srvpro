@@ -4473,7 +4473,7 @@
           ygopro.ctos_send(client.server, 'SURRENDER');
         } else {
           sur_player = CLIENT_get_partner(client);
-          if (sur_player.closed || sur_player.is_local) {
+          if (!sur_player || sur_player.closed || sur_player.is_local) {
             sur_player = client;
           }
           if (room.hostinfo.mode === 2 && sur_player !== client) {

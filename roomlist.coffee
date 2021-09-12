@@ -6,10 +6,10 @@ server = null
 
 room_data = (room)->
   id: room.name,
-  title: room.title,
+  title: room.title || room.name,
   user: {username: room.username}
   users: ({username: client.name, position: client.pos} for client in room.players),
-  options: room.get_old_hostinfo(), # Should be updated when MyCard client updates
+  options: room.get_roomlist_hostinfo(), # Should be updated when MyCard client updates
   arena: settings.modules.arena_mode.enabled && room.arena && settings.modules.arena_mode.mode
 
 init = (http_server, ROOM_all)->

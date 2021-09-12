@@ -7,7 +7,7 @@
     "lflist": 0,
     "rule": 0,
     "mode": 0,
-    "comment": "rule: 0=OCGONLY, 1=TCGONLY, 2=OT; mode: 0=SINGLE, 1=MATCH, 2=TAG",
+    "comment": "rule: 0=OCG-ONLY, 1=TCG-ONLY, 2=SC-ONLY, 3=CUSTOM-ONLY, 4=NO-UNIQUE, 5=ALL; mode: 0=SINGLE, 1=MATCH, 2=TAG",
     "duel_rule": 5,
     "no_check_deck": false,
     "no_shuffle_deck": false,
@@ -20,8 +20,11 @@
   },
   "modules": {
     "welcome": "MyCard YGOPro Server",
-    "update": "请更新游戏版本",
+    "update": "请更新你的客户端版本",
+    "wait_update": "你的客户端版本高于服务器版本，请等待服务器更新",
     "stop": false,
+    "full": "服务器已爆满",
+    "max_rooms_count": 0,
     "side_timeout": false,
     "tag_duel_surrender": true,
     "replay_delay": true,
@@ -89,7 +92,17 @@
       "blank_pass_modes": {
         "S": true,
         "M": true,
-        "T": false
+        "T": false,
+        "OOR": true,
+        "TOR": false,
+        "OR": true,
+        "TR": true,
+        "CR": false,
+        "OOMR": true,
+        "TOMR": false,
+        "OMR": true,
+        "CMR": false,
+        "TMR": true
       },
       "ready_time": 20,
       "hang_timeout": 90
@@ -137,9 +150,9 @@
     },
     "mycard": {
       "enabled": false,
-      "auth_base_url": "https://ygobbs.com",
+      "auth_base_url": "https://sapi.moecube.com:444/accounts",
       "auth_database": "postgres://233@233.mycard.moe/233",
-      "ban_get": "https://api.mycard.moe/ygopro/big-brother/ban",
+      "ban_get": "https://sapi.moecube.com:444/ygopro/big-brother/ban",
       "auth_key": "233333"
     },
     "challonge": {
@@ -147,6 +160,7 @@
       "post_detailed_score": true,
       "post_score_midduel": true,
       "cache_ttl": 60000,
+      "no_match_mode": false,
       "options": {
         "apiKey": "123"
       },
@@ -157,13 +171,13 @@
       "enabled": false,
       "accesskey": "233",
       "local": "./deck_log/",
-      "post": "https://api.mycard.moe/ygopro/analytics/deck/text",
+      "post": "https://sapi.moecube.com:444/ygopro/analytics/deck/text",
       "arena": "233"
     },
     "big_brother": {
       "enabled": false,
       "accesskey": "233",
-      "post": "https://api.mycard.moe/ygopro/big-brother"
+      "post": "https://sapi.moecube.com:444/ygopro/big-brother"
     },
     "arena_mode": {
       "enabled": false,
@@ -171,13 +185,13 @@
       "comment": "mode: athletic / entertain",
       "accesskey": "233",
       "ready_time": 30,
-      "check_permit": "https://api.mycard.moe/ygopro/match/permit",
+      "check_permit": "https://sapi.moecube.com:444/ygopro/match/permit",
       "post_score": false,
       "get_score": false,
       "punish_quit_before_match": false,
       "init_post": {
         "enabled": false,
-        "url": "https://api.mycard.moe/ygopro/match/clear",
+        "url": "https://sapi.moecube.com:444/ygopro/match/clear",
         "accesskey": "momobako"
       }
     },
@@ -197,8 +211,8 @@
     },
     "athletic_check": {
       "enabled": false,
-      "rankURL": "https://api.mycard.moe/ygopro/analytics/deck/type",
-      "identifierURL": "https://api.mycard.moe/ygopro/identifier/production",
+      "rankURL": "https://sapi.moecube.com:444/ygopro/analytics/deck/type",
+      "identifierURL": "https://sapi.moecube.com:444/ygopro/identifier/production",
       "athleticFetchParams": {
         "type": "week",
         "source": "mycard-athletic"

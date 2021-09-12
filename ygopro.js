@@ -14,9 +14,36 @@
 
   this.i18ns = loadJSON('./data/i18n.json');
 
+  this.i18nR = {};
+
+  this.reloadI18nR = function() {
+    var data, key, lang, ref, results, text;
+    ref = this.i18ns;
+    results = [];
+    for (lang in ref) {
+      data = ref[lang];
+      this.i18nR[lang] = {};
+      results.push((function() {
+        var results1;
+        results1 = [];
+        for (key in data) {
+          text = data[key];
+          results1.push(this.i18nR[lang][key] = {
+            regex: new RegExp("\\$\\{" + key + "\\}", 'g'),
+            text: text
+          });
+        }
+        return results1;
+      }).call(this));
+    }
+    return results;
+  };
+
+  this.reloadI18nR();
+
   YGOProMessagesHelper = require("./YGOProMessages.js").YGOProMessagesHelper; // 为 SRVPro2 准备的库，这里拿这个库只用来测试，SRVPro1 对异步支持不是特别完善，因此不会有很多异步优化
 
-  this.helper = new YGOProMessagesHelper();
+  this.helper = new YGOProMessagesHelper(9000);
 
   this.structs = this.helper.structs;
 
@@ -69,7 +96,7 @@
 
   //util
   this.stoc_send_chat = function(client, msg, player = 8) {
-    var i, len, line, o, r, re, ref, ref1;
+    var i, len, line, o, r, ref, ref1;
     if (!client) {
       console.log("err stoc_send_chat");
       return;
@@ -80,11 +107,10 @@
       if (player >= 10) {
         line = "[Server]: " + line;
       }
-      ref1 = this.i18ns[client.lang];
+      ref1 = this.i18nR[client.lang];
       for (o in ref1) {
         r = ref1[o];
-        re = new RegExp("\\$\\{" + o + "\\}", 'g');
-        line = line.replace(re, r);
+        line = line.replace(r.regex, r.text);
       }
       this.stoc_send(client, 'CHAT', {
         player: player,

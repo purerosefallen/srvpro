@@ -7,8 +7,20 @@ loadJSON = require('load-json-file').sync
 
 @i18ns = loadJSON './data/i18n.json'
 
+@i18nR = {}
+@reloadI18nR = () ->
+  for lang, data of @i18ns
+    @i18nR[lang]={}
+    for key, text of data
+      @i18nR[lang][key]={
+        regex: new RegExp("\\$\\{"+key+"\\}",'g'),
+        text: text
+      }
+
+@reloadI18nR()
+
 YGOProMessagesHelper = require("./YGOProMessages.js").YGOProMessagesHelper # 为 SRVPro2 准备的库，这里拿这个库只用来测试，SRVPro1 对异步支持不是特别完善，因此不会有很多异步优化
-@helper = new YGOProMessagesHelper()
+@helper = new YGOProMessagesHelper(9000)
 
 @structs = @helper.structs
 @structs_declaration = @helper.structs_declaration
@@ -54,9 +66,8 @@ translateHandler = (handler) ->
   for line in _.lines(msg)
     if player>=10
       line="[Server]: "+line
-    for o,r of @i18ns[client.lang]
-      re=new RegExp("\\$\\{"+o+"\\}",'g')
-      line=line.replace(re,r)
+    for o,r of @i18nR[client.lang]
+      line=line.replace(r.regex, r.text)
     @stoc_send client, 'CHAT', {
       player: player
       msg: line

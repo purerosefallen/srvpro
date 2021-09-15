@@ -67,7 +67,9 @@
       "enabled": true,
       "split_zh": false,
       "get": "https://api.moecube.com/biu-tips/tips.json",
-      "get_zh": false
+      "get_zh": false,
+      "interval": 30000,
+      "interval_ingame": 120000
     },
     "dialogues": {
       "enabled": true,

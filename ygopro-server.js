@@ -3146,7 +3146,7 @@
             //console.log(options)
             if (options.rule === 2) {
               options.lflist = -1;
-            } else {
+            } else if (options.rule !== 3) {
               options.lflist = _.findIndex(lflists, function(list) {
                 return ((options.rule === 1) === list.tcg) && list.date.isBefore();
               });

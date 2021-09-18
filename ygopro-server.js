@@ -3049,7 +3049,7 @@
           banMCRequest = (await axios.get(settings.modules.mycard.ban_get, {
             paramsSerializer: qs.stringify,
             params: {
-              user: name
+              user: client.name
             }
           }));
           if (typeof banMCRequest.data === "object") {

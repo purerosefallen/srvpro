@@ -13,6 +13,10 @@ exports.UserDialog = void 0;
 const typeorm_1 = require("typeorm");
 const User_1 = require("./User");
 let UserDialog = class UserDialog {
+    id;
+    cardCode;
+    text;
+    user;
 };
 __decorate([
     typeorm_1.PrimaryGeneratedColumn({ unsigned: true, type: "bigint" }),

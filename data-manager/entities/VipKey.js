@@ -14,6 +14,11 @@ const typeorm_1 = require("typeorm");
 const User_1 = require("./User");
 const CreateAndUpdateTimeBase_1 = require("./CreateAndUpdateTimeBase");
 let VipKey = class VipKey extends CreateAndUpdateTimeBase_1.CreateAndUpdateTimeBase {
+    id;
+    key;
+    type;
+    isUsed;
+    usedBy;
     toJSON() {
         return { key: this.key, type: this.type };
     }

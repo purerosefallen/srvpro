@@ -520,6 +520,7 @@
       await setting_save(settings);
     }
     if (settings.modules.mysql.enabled) {
+      global.PrimaryKeyType = settings.modules.mysql.db.type === 'sqlite' ? 'integer' : 'bigint';
       DataManager = require('./data-manager/DataManager.js').DataManager;
       dataManager = global.dataManager = new DataManager(settings.modules.mysql.db, log);
       log.info('Connecting to database.');
@@ -3078,7 +3079,7 @@
           banMCRequest = (await axios.get(settings.modules.mycard.ban_get, {
             paramsSerializer: qs.stringify,
             params: {
-              user: name
+              user: client.name
             }
           }));
           if (typeof banMCRequest.data === "object") {

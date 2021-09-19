@@ -406,6 +406,7 @@ init = () ->
     log.info('Saving migrated settings.')
     await setting_save(settings)
   if settings.modules.mysql.enabled
+    global.PrimaryKeyType = if settings.modules.mysql.db.type == 'sqlite' then 'integer' else 'bigint'
     DataManager = require('./data-manager/DataManager.js').DataManager
     dataManager = global.dataManager = new DataManager(settings.modules.mysql.db, log)
     log.info('Connecting to database.')
@@ -2330,7 +2331,7 @@ ygopro.ctos_follow 'JOIN_GAME', true, (buffer, info, client, server, datas)->
         banMCRequest = await axios.get settings.modules.mycard.ban_get, 
           paramsSerializer: qs.stringify
           params:
-            user: name
+            user: client.name
         if typeof(banMCRequest.data) == "object"
           client.ban_mc = banMCRequest.data
         else

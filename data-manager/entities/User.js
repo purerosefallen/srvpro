@@ -19,9 +19,16 @@ const VipKey_1 = require("./VipKey");
 const moment_1 = __importDefault(require("moment"));
 const CreateAndUpdateTimeBase_1 = require("./CreateAndUpdateTimeBase");
 let User = class User extends CreateAndUpdateTimeBase_1.CreateAndUpdateTimeBase {
+    key;
+    chatColor;
+    vipExpireDate;
     isVip() {
         return this.vipExpireDate && moment_1.default().isBefore(this.vipExpireDate);
     }
+    victory;
+    words;
+    dialogues;
+    usedKeys;
 };
 __decorate([
     typeorm_1.PrimaryColumn({ type: "varchar", length: 128 }),

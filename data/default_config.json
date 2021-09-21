@@ -66,14 +66,14 @@
     "tips": {
       "enabled": true,
       "split_zh": false,
-      "get": "https://api.moecube.com/biu-tips/tips.json",
+      "get": "https://sapi.moecube.com:444/biu-tips/tips.json",
       "get_zh": false,
       "interval": 30000,
       "interval_ingame": 120000
     },
     "dialogues": {
       "enabled": true,
-      "get_custom": "http://purerosefallen.github.io/ygopro-tips/dialogues-222.json",
+      "get_custom": "https://minio.momobako.com:9000/public/ygopro-tips/dialogues-222.json",
       "get": "http://mercury233.me/ygosrv233/dialogues.json"
     },
     "words": {

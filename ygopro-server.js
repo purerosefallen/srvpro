@@ -1788,10 +1788,10 @@
         this.hostinfo.lflist = -1;
         this.hostinfo.time_limit = 0;
         this.hostinfo.no_check_deck = true;
-      } else if ((param = name.match(/^(\d)(\d)(T|F)(T|F)(T|F)(\d+),(\d+),(\d+)/i))) {
+      } else if ((param = name.match(/^(\d)(\d)([12345TF])(T|F)(T|F)(\d+),(\d+),(\d+)/i))) {
         this.hostinfo.rule = parseInt(param[1]);
         this.hostinfo.mode = parseInt(param[2]);
-        this.hostinfo.duel_rule = (param[3] === 'T' ? 3 : 4);
+        this.hostinfo.duel_rule = (parseInt(param[3]) ? parseInt(param[3]) : (param[3] === 'T' ? 3 : 5));
         this.hostinfo.no_check_deck = param[4] === 'T';
         this.hostinfo.no_shuffle_deck = param[5] === 'T';
         this.hostinfo.start_lp = parseInt(param[6]);

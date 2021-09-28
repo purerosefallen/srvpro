@@ -1367,10 +1367,10 @@ class Room
       @hostinfo.time_limit = 0
       @hostinfo.no_check_deck = true
 
-    else if (param = name.match /^(\d)(\d)(T|F)(T|F)(T|F)(\d+),(\d+),(\d+)/i)
+    else if (param = name.match /^(\d)(\d)([12345TF])(T|F)(T|F)(\d+),(\d+),(\d+)/i)
       @hostinfo.rule = parseInt(param[1])
       @hostinfo.mode = parseInt(param[2])
-      @hostinfo.duel_rule = (if param[3] == 'T' then 3 else 4)
+      @hostinfo.duel_rule = (if parseInt(param[3]) then parseInt(param[3]) else (if param[3] == 'T' then 3 else 5))
       @hostinfo.no_check_deck = param[4] == 'T'
       @hostinfo.no_shuffle_deck = param[5] == 'T'
       @hostinfo.start_lp = parseInt(param[6])

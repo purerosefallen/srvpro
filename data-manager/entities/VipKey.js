@@ -24,29 +24,29 @@ let VipKey = class VipKey extends CreateAndUpdateTimeBase_1.CreateAndUpdateTimeB
     }
 };
 __decorate([
-    typeorm_1.PrimaryGeneratedColumn({ unsigned: true, type: "bigint" }),
+    (0, typeorm_1.PrimaryGeneratedColumn)({ unsigned: true, type: "bigint" }),
     __metadata("design:type", Number)
 ], VipKey.prototype, "id", void 0);
 __decorate([
-    typeorm_1.Index({ unique: true }),
-    typeorm_1.Column("varchar", { length: 30 }),
+    (0, typeorm_1.Index)({ unique: true }),
+    (0, typeorm_1.Column)("varchar", { length: 30 }),
     __metadata("design:type", String)
 ], VipKey.prototype, "key", void 0);
 __decorate([
-    typeorm_1.Column("int", { unsigned: true }),
+    (0, typeorm_1.Column)("int", { unsigned: true }),
     __metadata("design:type", Number)
 ], VipKey.prototype, "type", void 0);
 __decorate([
-    typeorm_1.Index(),
-    typeorm_1.Column("tinyint", { unsigned: true, default: 0 }),
+    (0, typeorm_1.Index)(),
+    (0, typeorm_1.Column)("tinyint", { unsigned: true, default: 0 }),
     __metadata("design:type", Number)
 ], VipKey.prototype, "isUsed", void 0);
 __decorate([
-    typeorm_1.ManyToOne(() => User_1.User, user => user.usedKeys),
+    (0, typeorm_1.ManyToOne)(() => User_1.User, user => user.usedKeys),
     __metadata("design:type", User_1.User)
 ], VipKey.prototype, "usedBy", void 0);
 VipKey = __decorate([
-    typeorm_1.Entity()
+    (0, typeorm_1.Entity)()
 ], VipKey);
 exports.VipKey = VipKey;
 //# sourceMappingURL=VipKey.js.map

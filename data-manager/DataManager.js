@@ -623,11 +623,11 @@ class DataManager {
                 }
                 const keyType = vipKey.type;
                 const previousDate = user.vipExpireDate;
-                if (previousDate && moment_1.default().isBefore(previousDate)) {
-                    user.vipExpireDate = moment_1.default(previousDate).add(keyType, "d").toDate();
+                if (previousDate && (0, moment_1.default)().isBefore(previousDate)) {
+                    user.vipExpireDate = (0, moment_1.default)(previousDate).add(keyType, "d").toDate();
                 }
                 else {
-                    user.vipExpireDate = moment_1.default().add(keyType, "d").toDate();
+                    user.vipExpireDate = (0, moment_1.default)().add(keyType, "d").toDate();
                 }
                 user = await mdb.save(user);
                 vipKey.isUsed = 1;
@@ -671,7 +671,7 @@ class DataManager {
                         user = new User_1.User();
                         user.key = userKey;
                     }
-                    user.vipExpireDate = moment_1.default(oldVipUserInfo.expire_date).toDate();
+                    user.vipExpireDate = (0, moment_1.default)(oldVipUserInfo.expire_date).toDate();
                     user.victory = oldVipUserInfo.victory || null;
                     user.words = oldVipUserInfo.words || null;
                     user = await mdb.save(user);

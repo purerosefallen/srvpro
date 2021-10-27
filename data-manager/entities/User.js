@@ -23,7 +23,7 @@ let User = class User extends CreateAndUpdateTimeBase_1.CreateAndUpdateTimeBase 
     chatColor;
     vipExpireDate;
     isVip() {
-        return this.vipExpireDate && moment_1.default().isBefore(this.vipExpireDate);
+        return this.vipExpireDate && (0, moment_1.default)().isBefore(this.vipExpireDate);
     }
     victory;
     words;
@@ -39,24 +39,24 @@ __decorate([
     __metadata("design:type", String)
 ], User.prototype, "chatColor", void 0);
 __decorate([
-    typeorm_1.Index(),
-    typeorm_1.Column("datetime", { nullable: true }),
+    (0, typeorm_1.Index)(),
+    (0, typeorm_1.Column)("datetime", { nullable: true }),
     __metadata("design:type", Date)
 ], User.prototype, "vipExpireDate", void 0);
 __decorate([
-    typeorm_1.Column("text", { nullable: true }),
+    (0, typeorm_1.Column)("text", { nullable: true }),
     __metadata("design:type", String)
 ], User.prototype, "victory", void 0);
 __decorate([
-    typeorm_1.Column("text", { nullable: true }),
+    (0, typeorm_1.Column)("text", { nullable: true }),
     __metadata("design:type", String)
 ], User.prototype, "words", void 0);
 __decorate([
-    typeorm_1.OneToMany(() => UserDialog_1.UserDialog, dialog => dialog.user),
+    (0, typeorm_1.OneToMany)(() => UserDialog_1.UserDialog, dialog => dialog.user),
     __metadata("design:type", Array)
 ], User.prototype, "dialogues", void 0);
 __decorate([
-    typeorm_1.OneToMany(() => VipKey_1.VipKey, vipKey => vipKey.usedBy),
+    (0, typeorm_1.OneToMany)(() => VipKey_1.VipKey, vipKey => vipKey.usedBy),
     __metadata("design:type", Array)
 ], User.prototype, "usedKeys", void 0);
 User = __decorate([

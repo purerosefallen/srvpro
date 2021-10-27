@@ -2327,16 +2327,16 @@ ygopro.ctos_follow 'JOIN_GAME', true, (buffer, info, client, server, datas)->
       return
     
     if settings.modules.mycard.enabled and settings.modules.mycard.ban_get and !client.is_local
-      try
-        banMCRequest = await axios.get settings.modules.mycard.ban_get, 
-          paramsSerializer: qs.stringify
-          params:
-            user: client.name
+      axios.get settings.modules.mycard.ban_get, 
+        paramsSerializer: qs.stringify
+        params:
+          user: client.name
+      .then (banMCRequest) ->
         if typeof(banMCRequest.data) == "object"
           client.ban_mc = banMCRequest.data
         else
           log.warn "ban get bad json", banMCRequest.data
-      catch e
+      .catch (e) ->
         log.warn 'ban get error', e.toString()
 
     check_buffer_indentity = (buf)->
@@ -2345,7 +2345,7 @@ ygopro.ctos_follow 'JOIN_GAME', true, (buffer, info, client, server, datas)->
         checksum += buf.readUInt8(i)
       (checksum & 0xFF) == 0
 
-    create_room_with_action = (buffer, decrypted_buffer, match_permit)->
+    create_room_with_action = (buffer, decrypted_buffer)->
       if client.closed
         return
       firstByte = buffer.readUInt8(1)
@@ -2413,9 +2413,16 @@ ygopro.ctos_follow 'JOIN_GAME', true, (buffer, info, client, server, datas)->
             ygopro.stoc_die(client, '${invalid_password_not_found}')
             return
         when 4
-          if match_permit and !match_permit.permit
-            ygopro.stoc_die(client, '${invalid_password_unauthorized}')
-            return
+          if settings.modules.arena_mode.check_permit
+            match_permit = null
+            try
+              match_permit = await axios.get settings.modules.arena_mode.check_permit,
+                responseType: 'json'
+            catch e
+              log.warn "match permit fail #{e.toString()}"
+            if match_permit and match_permit.permit == false
+              ygopro.stoc_die(client, '${invalid_password_unauthorized}')
+              return
           room = await ROOM_find_or_create_by_name('M#' + info.pass.slice(8))
           if room
             for player in room.get_playing_player() when player and player.name == client.name
@@ -2445,6 +2452,7 @@ ygopro.ctos_follow 'JOIN_GAME', true, (buffer, info, client, server, datas)->
       return
 
     _async.auto({
+      ###
       match_permit: (done) ->
         if client.closed
           done()
@@ -2470,6 +2478,7 @@ ygopro.ctos_follow 'JOIN_GAME', true, (buffer, info, client, server, datas)->
             done(null, null)
           return
         return
+      ###
       get_user: (done) ->
         if client.closed
           done()
@@ -2528,7 +2537,7 @@ ygopro.ctos_follow 'JOIN_GAME', true, (buffer, info, client, server, datas)->
         return
 
 
-      create_room_with_action(data.get_user.original, data.get_user.decrypted, data.match_permit)
+      create_room_with_action(data.get_user.original, data.get_user.decrypted)
     )
 
 

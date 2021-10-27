@@ -69,7 +69,7 @@ class DataManager {
         }
     }
     async init() {
-        this.db = await typeorm_1.createConnection({
+        this.db = await (0, typeorm_1.createConnection)({
             type: "mysql",
             synchronize: true,
             supportBigNumbers: true,
@@ -135,7 +135,7 @@ class DataManager {
         const replay = new CloudReplay_1.CloudReplay();
         replay.id = id;
         replay.fromBuffer(buffer);
-        replay.date = moment_1.default().toDate();
+        replay.date = (0, moment_1.default)().toDate();
         const players = playerInfos.map(p => {
             const player = CloudReplayPlayer_1.CloudReplayPlayer.fromPlayerInfo(p);
             return player;
@@ -226,12 +226,12 @@ class DataManager {
             if (ban) {
                 ban.count += count;
                 const banTime = ban.count > 3 ? Math.pow(2, ban.count - 3) * 2 : 0;
-                const banDate = moment_1.default(ban.time);
-                if (moment_1.default().isAfter(banDate)) {
-                    ban.time = moment_1.default().add(banTime, 'm').toDate();
+                const banDate = (0, moment_1.default)(ban.time);
+                if ((0, moment_1.default)().isAfter(banDate)) {
+                    ban.time = (0, moment_1.default)().add(banTime, 'm').toDate();
                 }
                 else {
-                    ban.time = moment_1.default(banDate).add(banTime, 'm').toDate();
+                    ban.time = (0, moment_1.default)(banDate).add(banTime, 'm').toDate();
                 }
                 if (!underscore_1.default.contains(ban.reasons, reason)) {
                     ban.reasons.push(reason);
@@ -241,7 +241,7 @@ class DataManager {
             else {
                 ban = new RandomDuelBan_1.RandomDuelBan();
                 ban.ip = ip;
-                ban.time = moment_1.default().toDate();
+                ban.time = (0, moment_1.default)().toDate();
                 ban.count = count;
                 ban.reasons = [reason];
                 ban.needTip = 1;
@@ -416,7 +416,7 @@ class DataManager {
     async saveDuelLog(name, roomId, cloudReplayId, replayFilename, roomMode, duelCount, playerInfos) {
         const duelLog = new DuelLog_1.DuelLog();
         duelLog.name = name;
-        duelLog.time = moment_1.default().toDate();
+        duelLog.time = (0, moment_1.default)().toDate();
         duelLog.roomId = roomId;
         duelLog.cloudReplayId = cloudReplayId;
         duelLog.replayFileName = replayFilename;

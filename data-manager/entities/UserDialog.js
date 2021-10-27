@@ -19,24 +19,24 @@ let UserDialog = class UserDialog {
     user;
 };
 __decorate([
-    typeorm_1.PrimaryGeneratedColumn({ unsigned: true, type: "bigint" }),
+    (0, typeorm_1.PrimaryGeneratedColumn)({ unsigned: true, type: "bigint" }),
     __metadata("design:type", Number)
 ], UserDialog.prototype, "id", void 0);
 __decorate([
-    typeorm_1.Index(),
-    typeorm_1.Column("int", { unsigned: true }),
+    (0, typeorm_1.Index)(),
+    (0, typeorm_1.Column)("int", { unsigned: true }),
     __metadata("design:type", Number)
 ], UserDialog.prototype, "cardCode", void 0);
 __decorate([
-    typeorm_1.Column("text"),
+    (0, typeorm_1.Column)("text"),
     __metadata("design:type", String)
 ], UserDialog.prototype, "text", void 0);
 __decorate([
-    typeorm_1.ManyToOne(() => User_1.User, user => user.dialogues),
+    (0, typeorm_1.ManyToOne)(() => User_1.User, user => user.dialogues),
     __metadata("design:type", User_1.User)
 ], UserDialog.prototype, "user", void 0);
 UserDialog = __decorate([
-    typeorm_1.Entity()
+    (0, typeorm_1.Entity)()
 ], UserDialog);
 exports.UserDialog = UserDialog;
 //# sourceMappingURL=UserDialog.js.map

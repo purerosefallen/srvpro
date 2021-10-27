@@ -2394,6 +2394,10 @@ ygopro.ctos_follow 'JOIN_GAME', true, (buffer, info, client, server, datas)->
               matchPermitRes = await axios.get settings.modules.arena_mode.check_permit,
                 responseType: 'json'
                 timeout: 3000
+                params:
+                  username: client.name,
+                  password: info.pass,
+                  arena: settings.modules.arena_mode.mode
               match_permit = matchPermitRes.data
             catch e
               log.warn "match permit fail #{e.toString()}"
@@ -2446,6 +2450,10 @@ ygopro.ctos_follow 'JOIN_GAME', true, (buffer, info, client, server, datas)->
       userDataRes = await axios.get userUrl,
         responseType: 'json'
         timeout: 10000
+        params:
+          api_key: settings.modules.mycard.auth_key,
+          api_username: client.name,
+          skip_track_visit: true
       userData = userDataRes.data
       #console.log userData
     catch e

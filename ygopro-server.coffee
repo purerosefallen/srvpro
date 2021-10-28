@@ -1991,6 +1991,11 @@ netRequestHandler = (client) ->
   ROOM_connected_ip[client.ip] = connect_count
   #log.info "connect", client.ip, ROOM_connected_ip[client.ip]
 
+  if ROOM_bad_ip[client.ip] > 5 or ROOM_connected_ip[client.ip] > 10
+    log.info 'BAD IP', client.ip
+    client.destroy()
+    return
+
   # server stand for the connection to ygopro server process
   server = new net.Socket()
   client.server = server
@@ -2072,11 +2077,6 @@ netRequestHandler = (client) ->
       SERVER_clear_disconnect(server)
     return
 
-  if ROOM_bad_ip[client.ip] > 5 or ROOM_connected_ip[client.ip] > 10
-    log.info 'BAD IP', client.ip
-    CLIENT_kick(client)
-    return
-
   client.playLines = (lines) ->
     for line in _.lines lines
       ygopro.stoc_send_chat(client, line, ygopro.constants.COLORS.PINK)
@@ -2126,16 +2126,16 @@ netRequestHandler = (client) ->
         room.watcher.write(buffer) for buffer in handle_data.datas
     else
       ctos_filter = null
-      disconnectIfInvalid = false
+      preconnect = false
       if settings.modules.reconnect.enabled and client.pre_reconnecting_to_room
         ctos_filter = ["UPDATE_DECK"]
-      if !client.name
+      if client.name == null
         ctos_filter = ["JOIN_GAME", "PLAYER_INFO"]
-        disconnectIfInvalid = true
+        preconnect = true
       handle_data = await ygopro.helper.handleBuffer(ctos_buffer, "CTOS", ctos_filter, {
         client: client,
         server: client.server
-      }, disconnectIfInvalid)
+      }, preconnect)
       if handle_data.feedback
         log.warn(handle_data.feedback.message, client.name, client.ip)
         if handle_data.feedback.type == "OVERSIZE" or handle_data.feedback.type == "INVALID_PACKET" or ROOM_bad_ip[client.ip] > 5
@@ -2146,7 +2146,7 @@ netRequestHandler = (client) ->
             ROOM_bad_ip[client.ip] = 1
           CLIENT_kick(client)
           return
-      if !client.server
+      if client.closed || !client.server
         return
       if client.established
         client.server.write buffer for buffer in handle_data.datas
@@ -2182,6 +2182,11 @@ deck_name_match = global.deck_name_match = (deck_name, player_name) ->
 # return true to cancel a synchronous message
 
 ygopro.ctos_follow 'PLAYER_INFO', true, (buffer, info, client, server, datas)->
+  # second PLAYER_INFO = attack
+  if client.name
+    log.info 'DUP PLAYER_INFO', client.ip
+    CLIENT_kick client
+    return '_cancel'
   # checkmate use username$password, but here don't
   # so remove the password
   name_full =info.name.replace(/\\/g, "").split("$")

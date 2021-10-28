@@ -8,13 +8,13 @@ import net from "net";
 
 
 class Handler {
-	private handler: (buffer: Buffer, info: any, datas: Buffer[], params: any) => Promise<boolean>;
+	private handler: (buffer: Buffer, info: any, datas: Buffer[], params: any) => Promise<boolean | string>;
 	synchronous: boolean;
-	constructor(handler: (buffer: Buffer, info: any, datas: Buffer[], params: any) => Promise<boolean>, synchronous: boolean) {
+	constructor(handler: (buffer: Buffer, info: any, datas: Buffer[], params: any) => Promise<boolean | string>, synchronous: boolean) {
 		this.handler = handler;
 		this.synchronous = synchronous || false;
 	}
-	async handle(buffer: Buffer, info: any, datas: Buffer[], params: any) {
+	async handle(buffer: Buffer, info: any, datas: Buffer[], params: any): Promise<boolean | string> {
 		if (this.synchronous) {
 			return !!(await this.handler(buffer, info, datas, params));
 		} else {
@@ -208,7 +208,7 @@ export class YGOProMessagesHelper {
 		});
 	}
 
-	addHandler(protostr: string, handler: (buffer: Buffer, info: any, datas: Buffer[], params: any) => Promise<boolean>, synchronous: boolean, priority: number) {
+	addHandler(protostr: string, handler: (buffer: Buffer, info: any, datas: Buffer[], params: any) => Promise<boolean | string>, synchronous: boolean, priority: number) {
 		if (priority < 0 || priority > 4) {
 			throw "Invalid priority: " + priority;
 		}
@@ -226,12 +226,13 @@ export class YGOProMessagesHelper {
 		handlerCollection.get(translatedProto).push(handlerObj);
 	}
 
-	async handleBuffer(messageBuffer: Buffer, direction: string, protoFilter?: string[], params?: any, disconnectIfInvalid = false): Promise<HandleResult> {
+	async handleBuffer(messageBuffer: Buffer, direction: string, protoFilter?: string[], params?: any, preconnect = false): Promise<HandleResult> {
 		let feedback: Feedback = null;
 		let messageLength = 0;
 		let bufferProto = 0;
 		let datas: Buffer[] = [];
-		for (let l = 0; l < this.singleHandleLimit; ++l) {
+		const limit = preconnect ? 2 : this.singleHandleLimit;
+		for (let l = 0; l < limit; ++l) {
 			if (messageLength === 0) {
 				if (messageBuffer.length >= 2) {
 					messageLength = messageBuffer.readUInt16LE(0);
@@ -257,8 +258,8 @@ export class YGOProMessagesHelper {
 			} else {
 				if (messageBuffer.length >= 2 + messageLength) {
 					const proto = this.constants[direction][bufferProto];
-					let cancel = proto && protoFilter && !protoFilter.includes(proto);
-					if (cancel && disconnectIfInvalid) {
+					let cancel: string | boolean = proto && protoFilter && !protoFilter.includes(proto);
+					if (cancel && preconnect) {
 						feedback = {
 							type: "INVALID_PACKET",
 							message: `${direction} proto not allowed`
@@ -282,6 +283,12 @@ export class YGOProMessagesHelper {
 							for (let handler of handlerCollection.get(bufferProto)) {
 								cancel = await handler.handle(buffer, info, datas, params);
 								if (cancel) {
+									if (cancel === '_cancel') {
+										return {
+											datas: [],
+											feedback
+										}
+									}
 									break;
 								}
 							}
@@ -303,10 +310,10 @@ export class YGOProMessagesHelper {
 					break;
 				}
 			}
-			if (l === this.singleHandleLimit - 1) {
+			if (l === limit - 1) {
 				feedback = {
 					type: "OVERSIZE",
-					message: `Oversized ${direction}`
+					message: `Oversized ${direction} ${limit}`
 				};
 			}
 		}

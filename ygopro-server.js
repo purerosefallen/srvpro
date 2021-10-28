@@ -2701,7 +2701,11 @@
     }
     ROOM_connected_ip[client.ip] = connect_count;
     //log.info "connect", client.ip, ROOM_connected_ip[client.ip]
-
+    if (ROOM_bad_ip[client.ip] > 5 || ROOM_connected_ip[client.ip] > 10) {
+      log.info('BAD IP', client.ip);
+      client.destroy();
+      return;
+    }
     // server stand for the connection to ygopro server process
     server = new net.Socket();
     client.server = server;
@@ -2801,6 +2805,7 @@
         SERVER_clear_disconnect(server);
       }
     });
+<<<<<<< HEAD
     if (ROOM_bad_ip[client.ip] > 5 || ROOM_connected_ip[client.ip] > 10) {
       log.info('BAD IP', client.ip);
       CLIENT_kick(client);
@@ -2816,6 +2821,8 @@
       }
       return results;
     };
+=======
+>>>>>>> mc
     if (settings.modules.cloud_replay.enabled) {
       client.open_cloud_replay = async function(replay) {
         var buffer, e, replay_buffer;
@@ -2843,7 +2850,7 @@
     // 客户端到服务端(ctos)协议分析
     client.pre_establish_buffers = new Array();
     client.on('data', async function(ctos_buffer) {
-      var bad_ip_count, buffer, ctos_filter, disconnectIfInvalid, handle_data, j, l, len, len1, len2, m, ref, ref1, ref2, room;
+      var bad_ip_count, buffer, ctos_filter, handle_data, j, l, len, len1, len2, m, preconnect, ref, ref1, ref2, room;
       if (client.is_post_watcher) {
         room = ROOM_all[client.rid];
         if (room) {
@@ -2872,18 +2879,18 @@
         }
       } else {
         ctos_filter = null;
-        disconnectIfInvalid = false;
+        preconnect = false;
         if (settings.modules.reconnect.enabled && client.pre_reconnecting_to_room) {
           ctos_filter = ["UPDATE_DECK"];
         }
-        if (!client.name) {
+        if (client.name === null) {
           ctos_filter = ["JOIN_GAME", "PLAYER_INFO"];
-          disconnectIfInvalid = true;
+          preconnect = true;
         }
         handle_data = (await ygopro.helper.handleBuffer(ctos_buffer, "CTOS", ctos_filter, {
           client: client,
           server: client.server
-        }, disconnectIfInvalid));
+        }, preconnect));
         if (handle_data.feedback) {
           log.warn(handle_data.feedback.message, client.name, client.ip);
           if (handle_data.feedback.type === "OVERSIZE" || handle_data.feedback.type === "INVALID_PACKET" || ROOM_bad_ip[client.ip] > 5) {
@@ -2897,7 +2904,7 @@
             return;
           }
         }
-        if (!client.server) {
+        if (client.closed || !client.server) {
           return;
         }
         if (client.established) {
@@ -2952,6 +2959,12 @@
   // return true to cancel a synchronous message
   ygopro.ctos_follow('PLAYER_INFO', true, async function(buffer, info, client, server, datas) {
     var geo, lang, name, name_full, struct, vpass;
+    // second PLAYER_INFO = attack
+    if (client.name) {
+      log.info('DUP PLAYER_INFO', client.ip);
+      CLIENT_kick(client);
+      return '_cancel';
+    }
     // checkmate use username$password, but here don't
     // so remove the password
     name_full = info.name.replace(/\\/g, "").split("$");

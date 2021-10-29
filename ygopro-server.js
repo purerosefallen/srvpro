@@ -2805,12 +2805,6 @@
         SERVER_clear_disconnect(server);
       }
     });
-<<<<<<< HEAD
-    if (ROOM_bad_ip[client.ip] > 5 || ROOM_connected_ip[client.ip] > 10) {
-      log.info('BAD IP', client.ip);
-      CLIENT_kick(client);
-      return;
-    }
     client.playLines = function(lines) {
       var j, len, line, ref, results;
       ref = _.lines(lines);
@@ -2821,8 +2815,6 @@
       }
       return results;
     };
-=======
->>>>>>> mc
     if (settings.modules.cloud_replay.enabled) {
       client.open_cloud_replay = async function(replay) {
         var buffer, e, replay_buffer;

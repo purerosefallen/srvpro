@@ -3088,7 +3088,8 @@ ygopro.stoc_follow 'HS_PLAYER_CHANGE', true, (buffer, info, client, server, data
       if room.waiting_for_player != room.waiting_for_player2
         room.waiting_for_player2 = room.waiting_for_player
         room.waiting_for_player_time = settings.modules.arena_mode.ready_time
-        room.waiting_for_player_interval = setInterval (()-> wait_room_start_arena(ROOM_all[client.rid]);return), 1000
+        if !room.waiting_for_player_interval
+          room.waiting_for_player_interval = setInterval (()-> wait_room_start_arena(ROOM_all[client.rid]);return), 1000
       else if !room.waiting_for_player and room.waiting_for_player_interval
         clearInterval room.waiting_for_player_interval
         room.waiting_for_player_interval = null
@@ -3497,7 +3498,7 @@ ygopro.ctos_follow 'CHAT', true, (buffer, info, client, server, datas)->
     client.abuse_count=client.abuse_count+2 if client.abuse_count
     ygopro.stoc_send_chat(client, "${chat_warn_level0}", ygopro.constants.COLORS.RED)
     cancel = true
-  if !(room and (room.random_type or room.arena))
+  if !(room and (room.random_type or room.arena)) and not settings.modules.mycard.enabled
     if !cancel and settings.modules.display_watchers and client.is_post_watcher
       ygopro.stoc_send_chat_to_room(room, "#{client.name}: #{msg}", 9)
       return true

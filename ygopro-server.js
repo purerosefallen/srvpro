@@ -4071,9 +4071,11 @@
         if (room.waiting_for_player !== room.waiting_for_player2) {
           room.waiting_for_player2 = room.waiting_for_player;
           room.waiting_for_player_time = settings.modules.arena_mode.ready_time;
-          room.waiting_for_player_interval = setInterval((function() {
-            wait_room_start_arena(ROOM_all[client.rid]);
-          }), 1000);
+          if (!room.waiting_for_player_interval) {
+            room.waiting_for_player_interval = setInterval((function() {
+              wait_room_start_arena(ROOM_all[client.rid]);
+            }), 1000);
+          }
         } else if (!room.waiting_for_player && room.waiting_for_player_interval) {
           clearInterval(room.waiting_for_player_interval);
           room.waiting_for_player_interval = null;
@@ -4672,7 +4674,7 @@
       ygopro.stoc_send_chat(client, "${chat_warn_level0}", ygopro.constants.COLORS.RED);
       cancel = true;
     }
-    if (!(room && (room.random_type || room.arena))) {
+    if (!(room && (room.random_type || room.arena)) && !settings.modules.mycard.enabled) {
       if (!cancel && settings.modules.display_watchers && client.is_post_watcher) {
         ygopro.stoc_send_chat_to_room(room, `${client.name}: ${msg}`, 9);
         return true;

@@ -1463,7 +1463,7 @@
       return false;
     }
     disconnect_info = disconnect_list[CLIENT_get_authorize_key(client)];
-    if (!disconnect_info) {
+    if (!(disconnect_info && disconnect_info.deckbuf)) {
       return false;
     }
     room = ROOM_all[disconnect_info.room_id];
@@ -3774,12 +3774,14 @@
         pos = pos * 2;
       }
       val = buffer.readInt32LE(2);
-      room.dueling_players[pos].lp -= val;
-      if (room.dueling_players[pos].lp < 0) {
-        room.dueling_players[pos].lp = 0;
-      }
-      if ((0 < (ref1 = room.dueling_players[pos].lp) && ref1 <= 100)) {
-        ygopro.stoc_send_chat_to_room(room, "${lp_low_opponent}", ygopro.constants.COLORS.PINK);
+      if (room.dueling_players[pos]) {
+        room.dueling_players[pos].lp -= val;
+        if (room.dueling_players[pos].lp < 0) {
+          room.dueling_players[pos].lp = 0;
+        }
+        if ((0 < (ref1 = room.dueling_players[pos].lp) && ref1 <= 100)) {
+          ygopro.stoc_send_chat_to_room(room, "${lp_low_opponent}", ygopro.constants.COLORS.PINK);
+        }
       }
     }
     if (msg_name === 'RECOVER' && client.pos === 0) {
@@ -3791,7 +3793,9 @@
         pos = pos * 2;
       }
       val = buffer.readInt32LE(2);
-      room.dueling_players[pos].lp += val;
+      if (room.dueling_players[pos]) {
+        room.dueling_players[pos].lp += val;
+      }
     }
     if (msg_name === 'LPUPDATE' && client.pos === 0) {
       pos = buffer.readUInt8(1);
@@ -3802,7 +3806,9 @@
         pos = pos * 2;
       }
       val = buffer.readInt32LE(2);
-      room.dueling_players[pos].lp = val;
+      if (room.dueling_players[pos]) {
+        room.dueling_players[pos].lp = val;
+      }
     }
     if (msg_name === 'PAY_LPCOST' && client.pos === 0) {
       pos = buffer.readUInt8(1);
@@ -3813,12 +3819,14 @@
         pos = pos * 2;
       }
       val = buffer.readInt32LE(2);
-      room.dueling_players[pos].lp -= val;
-      if (room.dueling_players[pos].lp < 0) {
-        room.dueling_players[pos].lp = 0;
-      }
-      if ((0 < (ref2 = room.dueling_players[pos].lp) && ref2 <= 100)) {
-        ygopro.stoc_send_chat_to_room(room, "${lp_low_self}", ygopro.constants.COLORS.PINK);
+      if (room.dueling_players[pos]) {
+        room.dueling_players[pos].lp -= val;
+        if (room.dueling_players[pos].lp < 0) {
+          room.dueling_players[pos].lp = 0;
+        }
+        if ((0 < (ref2 = room.dueling_players[pos].lp) && ref2 <= 100)) {
+          ygopro.stoc_send_chat_to_room(room, "${lp_low_self}", ygopro.constants.COLORS.PINK);
+        }
       }
     }
     //track card count
@@ -4801,7 +4809,7 @@
   });
 
   ygopro.ctos_follow('UPDATE_DECK', true, async function(buffer, info, client, server, datas) {
-    var buff_main, buff_side, card, current_deck, deck, deck_array, deck_main, deck_side, deck_text, deckbuf, decks, found_deck, i, j, l, len, len1, line, oppo_pos, recover_player_data, recoveredDeck, room, struct, win_pos;
+    var athleticCheckResult, buff_main, buff_side, card, current_deck, deck, deck_array, deck_main, deck_side, deck_text, deckbuf, decks, found_deck, i, j, l, len, len1, line, oppo_pos, recover_player_data, recoveredDeck, room, struct, win_pos;
     if (settings.modules.reconnect.enabled && client.pre_reconnecting) {
       if (!CLIENT_is_able_to_reconnect(client) && !CLIENT_is_able_to_kick_reconnect(client)) {
         ygopro.stoc_send_chat(client, "${reconnect_failed}", ygopro.constants.COLORS.RED);
@@ -4898,56 +4906,79 @@
         struct.set("deckbuf", [4392470, 4392470]);
         ygopro.stoc_send_chat(client, "${deck_incorrect_reconnect}", ygopro.constants.COLORS.RED);
         client.deck_good = false;
+        return false;
       }
-    } else if (room.duel_stage === ygopro.constants.DUEL_STAGE.BEGIN && settings.modules.tournament_mode.enabled && settings.modules.tournament_mode.deck_check && !client.is_local) {
-      decks = (await fs.promises.readdir(settings.modules.tournament_mode.deck_path));
-      if (decks.length) {
-        struct.set("mainc", 1);
-        struct.set("sidec", 1);
-        struct.set("deckbuf", [4392470, 4392470]);
-        buffer = struct.buffer;
-        found_deck = false;
-        for (j = 0, len = decks.length; j < len; j++) {
-          deck = decks[j];
-          if (deck_name_match(deck, client.name)) {
-            found_deck = deck;
-          }
-        }
-        if (found_deck) {
-          deck_text = (await fs.promises.readFile(settings.modules.tournament_mode.deck_path + found_deck, {
-            encoding: "ASCII"
-          }));
-          deck_array = deck_text.split("\n");
-          deck_main = [];
-          deck_side = [];
-          current_deck = deck_main;
-          for (l = 0, len1 = deck_array.length; l < len1; l++) {
-            line = deck_array[l];
-            if (line.indexOf("!side") >= 0) {
-              current_deck = deck_side;
-            }
-            card = parseInt(line);
-            if (!isNaN(card)) {
-              current_deck.push(card);
-            }
-          }
-          if (_.isEqual(buff_main, deck_main) && _.isEqual(buff_side, deck_side)) {
-            deckbuf = deck_main.concat(deck_side);
-            struct.set("mainc", deck_main.length);
-            struct.set("sidec", deck_side.length);
-            struct.set("deckbuf", deckbuf);
-            buffer = struct.buffer;
-            //log.info("deck ok: " + client.name)
-            ygopro.stoc_send_chat(client, `\${deck_correct_part1} ${found_deck} \${deck_correct_part2}`, ygopro.constants.COLORS.BABYBLUE);
-          } else {
-            //log.info("bad deck: " + client.name + " / " + buff_main + " / " + buff_side)
-            ygopro.stoc_send_chat(client, `\${deck_incorrect_part1} ${found_deck} \${deck_incorrect_part2}`, ygopro.constants.COLORS.RED);
+    } else {
+      if (room.arena && settings.modules.athletic_check.enabled && settings.modules.athletic_check.banCount) {
+        athleticCheckResult = (await athleticChecker.checkAthletic({
+          main: buff_main,
+          side: buff_side
+        }));
+        if (athleticCheckResult.success) {
+          if (athleticCheckResult.athletic && athleticCheckResult.athletic <= settings.modules.athletic_check.banCount) {
+            struct.set("mainc", 1);
+            struct.set("sidec", 1);
+            struct.set("deckbuf", [4392470, 4392470]);
+            ygopro.stoc_send_chat(client, `\${banned_athletic_deck_part1}${settings.modules.athletic_check.banCount}\${banned_athletic_deck_part2}`, ygopro.constants.COLORS.RED);
             client.deck_good = false;
+            return false;
           }
         } else {
-          //log.info("player deck not found: " + client.name)
-          ygopro.stoc_send_chat(client, `${client.name}\${deck_not_found}`, ygopro.constants.COLORS.RED);
-          client.deck_good = false;
+          log.warn("GET ATHLETIC FAIL", client.name, athleticCheckResult.message);
+        }
+      }
+      if (room.duel_stage === ygopro.constants.DUEL_STAGE.BEGIN && settings.modules.tournament_mode.enabled && settings.modules.tournament_mode.deck_check && !client.is_local) {
+        decks = (await fs.promises.readdir(settings.modules.tournament_mode.deck_path));
+        if (decks.length) {
+          struct.set("mainc", 1);
+          struct.set("sidec", 1);
+          struct.set("deckbuf", [4392470, 4392470]);
+          buffer = struct.buffer;
+          found_deck = false;
+          for (j = 0, len = decks.length; j < len; j++) {
+            deck = decks[j];
+            if (deck_name_match(deck, client.name)) {
+              found_deck = deck;
+            }
+          }
+          if (found_deck) {
+            deck_text = (await fs.promises.readFile(settings.modules.tournament_mode.deck_path + found_deck, {
+              encoding: "ASCII"
+            }));
+            deck_array = deck_text.split("\n");
+            deck_main = [];
+            deck_side = [];
+            current_deck = deck_main;
+            for (l = 0, len1 = deck_array.length; l < len1; l++) {
+              line = deck_array[l];
+              if (line.indexOf("!side") >= 0) {
+                current_deck = deck_side;
+              }
+              card = parseInt(line);
+              if (!isNaN(card)) {
+                current_deck.push(card);
+              }
+            }
+            if (_.isEqual(buff_main, deck_main) && _.isEqual(buff_side, deck_side)) {
+              deckbuf = deck_main.concat(deck_side);
+              struct.set("mainc", deck_main.length);
+              struct.set("sidec", deck_side.length);
+              struct.set("deckbuf", deckbuf);
+              buffer = struct.buffer;
+              //log.info("deck ok: " + client.name)
+              ygopro.stoc_send_chat(client, `\${deck_correct_part1} ${found_deck} \${deck_correct_part2}`, ygopro.constants.COLORS.BABYBLUE);
+            } else {
+              //log.info("bad deck: " + client.name + " / " + buff_main + " / " + buff_side)
+              ygopro.stoc_send_chat(client, `\${deck_incorrect_part1} ${found_deck} \${deck_incorrect_part2}`, ygopro.constants.COLORS.RED);
+              client.deck_good = false;
+              return false;
+            }
+          } else {
+            //log.info("player deck not found: " + client.name)
+            ygopro.stoc_send_chat(client, `${client.name}\${deck_not_found}`, ygopro.constants.COLORS.RED);
+            client.deck_good = false;
+            return false;
+          }
         }
       }
     }

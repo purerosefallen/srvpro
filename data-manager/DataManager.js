@@ -53,7 +53,7 @@ class DataManager {
         try {
             // @ts-ignore
             if (this.config.type !== 'sqlite') {
-                this.db.transaction(async (mdb) => {
+                await this.db.transaction(async (mdb) => {
                     const result = await fun(mdb);
                     if (!result) {
                         throw new Error('Rollback requested.');

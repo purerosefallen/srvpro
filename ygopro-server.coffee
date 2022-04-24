@@ -3446,6 +3446,8 @@ ygopro.ctos_follow 'CHAT', true, (buffer, info, client, server, datas)->
                     ygopro.stoc_send_chat(client, "${vip_success_new_part1}" + client.name_vpass + "${vip_success_new_part2}", ygopro.constants.COLORS.BABYBLUE)
                   when 2
                     ygopro.stoc_send_chat(client, "${vip_success_renew}", ygopro.constants.COLORS.BABYBLUE)
+                  when 3
+                    ygopro.stoc_send_chat(client, "Internal error", ygopro.constants.COLORS.RED)
             when 'dialogues'
               if !isVip
                 CLIENT_send_vip_status(client)

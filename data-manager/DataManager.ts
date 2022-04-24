@@ -615,11 +615,12 @@ export class DataManager {
 
 	async useVipKey(userKey: string, vipKeyText: string) {
 		let user = await this.getOrCreateUser(userKey);
-		let result = 0;
+		let result = 3;
 		await this.transaction(async (mdb) => {
 			try {
 				const vipKey = await mdb.findOne(VipKey, {key: vipKeyText, isUsed: 0});
-				if(!vipKey) {
+				if (!vipKey) {
+					result = 0;
 					return false;
 				}
 				const keyType = vipKey.type;

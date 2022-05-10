@@ -4686,7 +4686,7 @@
       cancel = true;
     }
     if (!(room && (room.random_type || room.arena)) && !settings.modules.mycard.enabled) {
-      if (!cancel && settings.modules.display_watchers && client.is_post_watcher) {
+      if (!cancel && settings.modules.display_watchers && (client.is_post_watcher || client.pos > 3)) {
         ygopro.stoc_send_chat_to_room(room, `${client.name}: ${msg}`, 9);
         return true;
       }
@@ -4755,7 +4755,7 @@
       ygopro.stoc_send_chat_to_room(room, `${client.name} \${chat_banned}`, ygopro.constants.COLORS.RED);
       await ROOM_ban_player(client.name, client.ip, "${random_ban_reason_abuse}");
     }
-    if (!cancel && settings.modules.display_watchers && client.is_post_watcher) {
+    if (!cancel && settings.modules.display_watchers && (client.is_post_watcher || client.pos > 3)) {
       ygopro.stoc_send_chat_to_room(room, `${client.name}: ${msg}`, 9);
       return true;
     }

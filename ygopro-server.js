@@ -3310,12 +3310,14 @@
           }
         }, async function(err, datas) {
           var create_room_name, found, k, match, ref2, ref3, room, user;
-          if (client.closed) {
-            return;
-          }
           if (err || !datas.participant_data || !datas.match_data) {
             log.warn("Failed loading Challonge user info", err);
-            ygopro.stoc_die(client, '${challonge_match_load_failed}');
+            if (!client.closed) {
+              ygopro.stoc_die(client, '${challonge_match_load_failed}');
+            }
+            return;
+          }
+          if (client.closed) {
             return;
           }
           found = false;

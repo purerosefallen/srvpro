@@ -438,7 +438,7 @@
     }
     //import the old Challonge api key option
     if (settings.modules.challonge.options) {
-      settings.modules.challonge.api_key = settings.modules.challonge.options.api_key;
+      settings.modules.challonge.api_key = settings.modules.challonge.options.apiKey;
       delete settings.modules.challonge.options;
       imported = true;
     }
@@ -1658,7 +1658,7 @@
       this.established = false;
       this.watcher_buffers = [];
       this.recorder_buffers = [];
-      this.cloud_replay_id = Math.floor(Math.random() * 100000000);
+      this.cloud_replay_id = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
       this.watchers = [];
       this.random_type = '';
       this.welcome = '';

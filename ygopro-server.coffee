@@ -338,7 +338,7 @@ init = () ->
     imported = true
   #import the old Challonge api key option
   if settings.modules.challonge.options
-    settings.modules.challonge.api_key = settings.modules.challonge.options.api_key
+    settings.modules.challonge.api_key = settings.modules.challonge.options.apiKey
     delete settings.modules.challonge.options
     imported = true
   #import the old random_duel.blank_pass_match option
@@ -1262,7 +1262,7 @@ class Room
     @established = false
     @watcher_buffers = []
     @recorder_buffers = []
-    @cloud_replay_id = Math.floor(Math.random()*100000000)
+    @cloud_replay_id = Math.floor(Math.random()*Number.MAX_SAFE_INTEGER)
     @watchers = []
     @random_type = ''
     @welcome = ''

@@ -1260,7 +1260,7 @@ class Room
     @established = false
     @watcher_buffers = []
     @recorder_buffers = []
-    @cloud_replay_id = Math.floor(Math.random()*100000000)
+    @cloud_replay_id = Math.floor(Math.random()*Number.MAX_SAFE_INTEGER)
     @watchers = []
     @random_type = ''
     @welcome = ''

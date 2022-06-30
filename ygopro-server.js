@@ -1658,7 +1658,7 @@
       this.established = false;
       this.watcher_buffers = [];
       this.recorder_buffers = [];
-      this.cloud_replay_id = Math.floor(Math.random() * 100000000);
+      this.cloud_replay_id = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
       this.watchers = [];
       this.random_type = '';
       this.welcome = '';

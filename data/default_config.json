@@ -231,7 +231,8 @@
     "chatgpt": {
       "enabled": false,
       "endpoint": "https://chatgpt.hanatan.net",
-      "token": "hanatan"
+      "token": "hanatan",
+      "session": "srvpro"
     },
     "test_mode": {
       "watch_public_hand": false,

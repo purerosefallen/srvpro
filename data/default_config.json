@@ -228,6 +228,11 @@
       ],
       "ip_header": "x-forwarded-for"
     },
+    "chatgpt": {
+      "enabled": false,
+      "endpoint": "https://chatgpt.hanatan.net",
+      "token": "hanatan"
+    },
     "test_mode": {
       "watch_public_hand": false,
       "no_connect_count_limit": false,

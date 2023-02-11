@@ -4391,7 +4391,7 @@
   //else
   //log.info 'BIG BROTHER OK', response.statusCode, roomname, body
   ygopro.ctos_follow('CHAT', true, async function(buffer, info, client, server, datas) {
-    var buy_result, cancel, ccolor, cip, cmd, cmsg, cname, code, color, cvalue, isVip, key, msg, name, oldmsg, ref, room, struct, sur_player, uname, windbot, word;
+    var buy_result, cancel, ccolor, cip, cmd, cmsg, cname, code, color, cvalue, isVip, key, msg, name, oldmsg, ref, room, session_key, struct, sur_player, uname, windbot, word;
     room = ROOM_all[client.rid];
     if (!room) {
       return;
@@ -4639,6 +4639,46 @@
       }
       ygopro.stoc_send_chat(client, "${chat_warn_level0}", ygopro.constants.COLORS.RED);
       cancel = true;
+    }
+    if (!cancel && settings.modules.chatgpt.enabled && room.windbot && !client.is_post_watcher && client.pos === 0) { //< 2 and not client.is_local
+      session_key = `${settings.modules.chatgpt.session}:${settings.port}:${CLIENT_get_authorize_key(client)}`;
+      log.info("chatgpt", session_key, msg);
+      axios.post(`${settings.modules.chatgpt.endpoint}/api/chat`, {
+        session: session_key,
+        text: msg
+      }, {
+        timeout: 300000,
+        headers: {
+          Authorization: `Bearer ${settings.modules.chatgpt.token}`
+        }
+      }).then(function(res) {
+        var chunk, chunks, j, len, line, lines, results, text;
+        log.info("chatgpt result", res.data.text);
+        text = res.data.data.text;
+        lines = text.split("\n");
+        results = [];
+        for (j = 0, len = lines.length; j < len; j++) {
+          line = lines[j];
+          if (line) {
+            chunks = _.chunk(line, 100);
+            results.push((function() {
+              var l, len1, results1;
+              results1 = [];
+              for (l = 0, len1 = chunks.length; l < len1; l++) {
+                chunk = chunks[l];
+                results1.push(ygopro.stoc_send_chat_to_room(room, chunk.join(''), 1 - client.pos));
+              }
+              return results1;
+            })());
+          } else {
+            results.push(ygopro.stoc_send_chat_to_room(room, ' ', 1 - client.pos));
+          }
+        }
+        return results;
+      }).catch(function(err) {
+        return log.error("CHATGPT ERROR", session_key, err);
+      });
+      return false;
     }
     if (!(room && (room.random_type || room.arena)) && !settings.modules.mycard.enabled) {
       if (!cancel && settings.modules.display_watchers && (client.is_post_watcher || client.pos > 3)) {

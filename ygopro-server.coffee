@@ -3462,6 +3462,30 @@ ygopro.ctos_follow 'CHAT', true, (buffer, info, client, server, datas)->
     client.abuse_count=client.abuse_count+2 if client.abuse_count
     ygopro.stoc_send_chat(client, "${chat_warn_level0}", ygopro.constants.COLORS.RED)
     cancel = true
+  if not cancel and settings.modules.chatgpt.enabled and room.windbot and not client.is_post_watcher and client.pos == 0 #< 2 and not client.is_local
+    session_key = "#{settings.modules.chatgpt.session}:#{settings.port}:#{CLIENT_get_authorize_key(client)}"
+    axios.post("#{settings.modules.chatgpt.endpoint}/api/chat", {
+      session: session_key,
+      text: msg
+    }, {
+      timeout: 300000,
+      headers: {
+        Authorization: "Bearer #{settings.modules.chatgpt.token}"
+      }
+    }).then((res) ->
+      text = res.data.data.text
+      lines = text.split("\n")
+      for line in lines
+        if line
+          chunks = _.chunk(line, 100)
+          for chunk in chunks
+            ygopro.stoc_send_chat_to_room(room, chunk.join(''), 1 - client.pos)
+        else
+          ygopro.stoc_send_chat_to_room(room, ' ', 1 - client.pos)
+    ).catch((err) ->
+      log.error "CHATGPT ERROR", session_key, err
+    )
+    return false
   if !(room and (room.random_type or room.arena)) and not settings.modules.mycard.enabled
     if !cancel and settings.modules.display_watchers and (client.is_post_watcher or client.pos > 3)
       ygopro.stoc_send_chat_to_room(room, "#{client.name}: #{msg}", 9)

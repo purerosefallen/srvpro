@@ -4640,9 +4640,8 @@
       ygopro.stoc_send_chat(client, "${chat_warn_level0}", ygopro.constants.COLORS.RED);
       cancel = true;
     }
-    if (!cancel && settings.modules.chatgpt.enabled && room.windbot && !client.is_post_watcher && client.pos === 0) { //< 2 and not client.is_local
+    if (!cancel && settings.modules.chatgpt.enabled && room.windbot && !client.is_post_watcher && client.pos < 2 && !client.is_local) {
       session_key = `${settings.modules.chatgpt.session}:${settings.port}:${CLIENT_get_authorize_key(client)}`;
-      log.info("chatgpt", session_key, msg);
       axios.post(`${settings.modules.chatgpt.endpoint}/api/chat`, {
         session: session_key,
         text: msg
@@ -4653,7 +4652,6 @@
         }
       }).then(function(res) {
         var chunk, chunks, j, len, line, lines, results, text;
-        log.info("chatgpt result", res.data.text);
         text = res.data.data.text;
         lines = text.split("\n");
         results = [];

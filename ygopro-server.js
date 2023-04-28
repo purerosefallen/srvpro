@@ -2422,7 +2422,12 @@
       if (this.duel_stage === ygopro.constants.DUEL_STAGE.DUELING) {
         switch (settings.modules.http.quick_death_rule) {
           case 4: // instant death
-            win_pos = this.dueling_players[0].lp > this.dueling_players[oppo_pos].lp ? 0 : oppo_pos;
+            win_pos = 0;
+            if (this.dueling_players[0].lp === this.dueling_players[oppo_pos].lp) {
+              win_pos = this.dueling_players[oppo_pos].is_first ? 0 : oppo_pos;
+            } else {
+              win_pos = this.dueling_players[0].lp > this.dueling_players[oppo_pos].lp ? 0 : oppo_pos;
+            }
             ygopro.stoc_send_chat_to_room(this, "${death_finish_part1}" + this.dueling_players[win_pos].name + "${death_finish_part2}", ygopro.constants.COLORS.BABYBLUE);
             ygopro.ctos_send(this.dueling_players[oppo_pos - win_pos].server, 'SURRENDER');
             break;
@@ -2468,7 +2473,7 @@
             this.death = -1;
             ygopro.stoc_send_chat_to_room(this, "${death_start_quick}", ygopro.constants.COLORS.BABYBLUE);
             break;
-          default:
+          case 0:
             this.death = 5;
             ygopro.stoc_send_chat_to_room(this, "${death_start_siding}", ygopro.constants.COLORS.BABYBLUE);
         }

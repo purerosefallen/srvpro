@@ -1824,7 +1824,11 @@ class Room
     if @duel_stage == ygopro.constants.DUEL_STAGE.DUELING
       switch settings.modules.http.quick_death_rule
         when 4 # instant death
-          win_pos = if @dueling_players[0].lp > @dueling_players[oppo_pos].lp then 0 else oppo_pos
+          win_pos = 0
+          if @dueling_players[0].lp == @dueling_players[oppo_pos].lp
+            win_pos = if @dueling_players[oppo_pos].is_first then 0 else oppo_pos
+          else
+            win_pos = if @dueling_players[0].lp > @dueling_players[oppo_pos].lp then 0 else oppo_pos
           ygopro.stoc_send_chat_to_room(this, "${death_finish_part1}" + @dueling_players[win_pos].name + "${death_finish_part2}", ygopro.constants.COLORS.BABYBLUE)
           ygopro.ctos_send(@dueling_players[oppo_pos - win_pos].server, 'SURRENDER')
         when 3
@@ -1856,7 +1860,7 @@ class Room
         when 1
           @death = -1
           ygopro.stoc_send_chat_to_room(this, "${death_start_quick}", ygopro.constants.COLORS.BABYBLUE)
-        else
+        when 0
           @death = 5
           ygopro.stoc_send_chat_to_room(this, "${death_start_siding}", ygopro.constants.COLORS.BABYBLUE)
     return true

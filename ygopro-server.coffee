@@ -2245,6 +2245,10 @@ ygopro.ctos_follow 'JOIN_GAME', true, (buffer, info, client, server, datas)->
     }
     CLIENT_kick(client)
 
+  else if info.pass.toUpperCase()=="IP"
+    ygopro.stoc_send_chat(client, "IP: " + client.ip, ygopro.constants.COLORS.BABYBLUE)
+    CLIENT_kick(client)
+
   else if info.pass.toUpperCase()=="RC" and settings.modules.tournament_mode.enable_recover
     ygopro.stoc_send_chat(client,"${recover_replay_hint}", ygopro.constants.COLORS.BABYBLUE)
     available_logs = await dataManager.getDuelLogFromRecoverSearch(client.name_vpass)

@@ -2247,6 +2247,10 @@ ygopro.ctos_follow 'JOIN_GAME', true, (buffer, info, client, server, datas)->
 
   else if info.pass.toUpperCase()=="IP"
     ygopro.stoc_send_chat(client, "IP: " + client.ip, ygopro.constants.COLORS.BABYBLUE)
+    ygopro.stoc_send client, 'ERROR_MSG', {
+      msg: 1
+      code: 9
+    }
     CLIENT_kick(client)
 
   else if info.pass.toUpperCase()=="RC" and settings.modules.tournament_mode.enable_recover

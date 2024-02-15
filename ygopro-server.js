@@ -2394,7 +2394,7 @@
             }
           }
         }
-        if (this.players.length && !(this.windbot && client.is_host && this.duel.stage === ygopro.constants.DUEL_STAGE.BEGIN) && !(this.arena && this.duel_stage === ygopro.constants.DUEL_STAGE.BEGIN && client.pos <= 3)) {
+        if (this.players.length && !(this.windbot && client.is_host && this.duel_stage === ygopro.constants.DUEL_STAGE.BEGIN) && !(this.arena && this.duel_stage === ygopro.constants.DUEL_STAGE.BEGIN && client.pos <= 3)) {
           left_name = (settings.modules.hide_name && this.duel_stage === ygopro.constants.DUEL_STAGE.BEGIN ? "********" : client.name);
           ygopro.stoc_send_chat_to_room(this, `${left_name} \${left_game}` + (error ? `: ${error}` : ''));
           if (!this.windbot && this.duel_stage === ygopro.constants.DUEL_STAGE.BEGIN && settings.modules.http.websocket_roomlist) {

@@ -1337,7 +1337,7 @@ class Room
       @hostinfo.rule = 5
       @hostinfo.lflist = -1
       @hostinfo.time_limit = 0
-      @hostinfo.no_check_deck = true
+      #@hostinfo.no_check_deck = true
 
     else if (param = name.match /^(\d)(\d)([12345TF])(T|F)(T|F)(\d+),(\d+),(\d+)/i)
       @hostinfo.rule = parseInt(param[1])
@@ -1803,7 +1803,7 @@ class Room
             ROOM_ban_player(client.name, client.ip, "${random_ban_reason_flee}")
             if settings.modules.random_duel.record_match_scores and @random_type == 'M'
               ROOM_player_flee(client.name_vpass)
-      if @players.length and !(@windbot and client.is_host) and !(@arena and @duel_stage == ygopro.constants.DUEL_STAGE.BEGIN and client.pos <= 3)
+      if @players.length and !(@windbot and client.is_host and @duel.stage == ygopro.constants.DUEL_STAGE.BEGIN) and !(@arena and @duel_stage == ygopro.constants.DUEL_STAGE.BEGIN and client.pos <= 3)
         left_name = (if settings.modules.hide_name and @duel_stage == ygopro.constants.DUEL_STAGE.BEGIN then "********" else client.name)
         ygopro.stoc_send_chat_to_room this, "#{left_name} ${left_game}" + if error then ": #{error}" else ''
         roomlist.update(this) if !@windbot and @duel_stage == ygopro.constants.DUEL_STAGE.BEGIN and settings.modules.http.websocket_roomlist

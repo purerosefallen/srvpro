@@ -249,6 +249,7 @@ geoip = null
 dataManager = null
 windbots = []
 disconnect_list = {} # {old_client, old_server, room_id, timeout, deckbuf}
+extra_mode_list = global.extra_mode_list = [] # (rule) => void, with 'this' is ROOM 
 
 moment_now = global.moment_now = null
 moment_now_string = global.moment_now_string = null
@@ -731,9 +732,10 @@ init = () ->
 
   plugin_list = await fs.promises.readdir("./plugins")
   for plugin_filename in plugin_list
-    plugin_path = process.cwd() + "/plugins/" + plugin_filename
-    require(plugin_path)
-    log.info("Plugin loaded:", plugin_filename)
+    if plugin_filename.endsWith '.js'
+      plugin_path = process.cwd() + "/plugins/" + plugin_filename
+      require(plugin_path)
+      log.info("Plugin loaded:", plugin_filename)
 
   return
 
@@ -1446,6 +1448,9 @@ class Room
       if (param = rule.match /(^|，|,)(LFLIST|LF)(\d+)(，|,|$)/)
         lflist = parseInt(param[3]) - 1
         @hostinfo.lflist = lflist
+
+      for extra_mode_func from extra_mode_list
+        extra_mode_func.call this, rule
 
       if (rule.match /(^|，|,)(NOLFLIST|NF)(，|,|$)/)
         @hostinfo.lflist = -1

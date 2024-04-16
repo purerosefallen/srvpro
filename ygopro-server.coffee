@@ -2430,6 +2430,8 @@ ygopro.ctos_follow 'JOIN_GAME', true, (buffer, info, client, server, datas)->
             room.max_player = 2
             if room.arena == "athletic"
               room.welcome = "${athletic_arena_tip}"
+            else
+              room.welcome = "${entertain_arena_tip}"
         when 5
           title = info.pass.slice(8).replace(String.fromCharCode(0xFEFF), ' ')
           room = ROOM_find_by_title(title)
@@ -3911,7 +3913,7 @@ ygopro.stoc_follow 'REPLAY', true, (buffer, info, client, server, datas)->
         dataManager.saveDuelLog(room.name, room.process_pid, room.cloud_replay_id, replay_filename, room.hostinfo.mode, room.duel_count, playerInfos) # no synchronize here because too slow
     if settings.modules.mysql.enabled && settings.modules.cloud_replay.enabled and settings.modules.tournament_mode.enabled
       ygopro.stoc_send_chat(client, "${cloud_replay_delay_part1}R##{room.cloud_replay_id}${cloud_replay_delay_part2}", ygopro.constants.COLORS.BABYBLUE)
-  await return settings.modules.tournament_mode.enabled and settings.modules.tournament_mode.block_replay_to_player or settings.modules.replay_delay and room.hostinfo.mode == 1
+  await return settings.modules.tournament_mode.enabled and settings.modules.tournament_mode.block_replay_to_player or settings.modules.replay_delay and room and room.hostinfo.mode == 1
 
 # spawn windbot
 windbot_looplimit = 0

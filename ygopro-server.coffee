@@ -3271,13 +3271,13 @@ ygopro.ctos_follow 'SURRENDER', true, (buffer, info, client, server, datas)->
     ygopro.stoc_send_chat(client, "${surrender_denied}", ygopro.constants.COLORS.BABYBLUE)
     return true
   if room.hostinfo.mode == 2
-    if !settings.modules.tag_duel_surrender
-      return true
-    else if !client.surrend_confirm and !CLIENT_get_partner(client).closed and !CLIENT_get_partner(client).is_local
+    if !client.surrend_confirm and !CLIENT_get_partner(client).closed and !CLIENT_get_partner(client).is_local
       sur_player = CLIENT_get_partner(client)
       ygopro.stoc_send_chat(sur_player, "${surrender_confirm_tag}", ygopro.constants.COLORS.BABYBLUE)
       ygopro.stoc_send_chat(client, "${surrender_confirm_sent}", ygopro.constants.COLORS.BABYBLUE)
       sur_player.surrend_confirm = true
+      for player in [client, sur_player]
+        ygopro.stoc_send(client, 'TEAMMATE_SURRENDER')
       return true
   await return false
 
@@ -3312,7 +3312,7 @@ ygopro.ctos_follow 'CHAT', true, (buffer, info, client, server, datas)->
   isVip = await CLIENT_check_vip(client)
   switch cmd[0]
     when '/投降', '/surrender'
-      if room.duel_stage == ygopro.constants.DUEL_STAGE.BEGIN or (room.hostinfo.mode==2 and !settings.modules.tag_duel_surrender)
+      if room.duel_stage == ygopro.constants.DUEL_STAGE.BEGIN
         return cancel
       if room.random_type and room.turn < 3 and !client.flee_free
         ygopro.stoc_send_chat(client, "${surrender_denied}", ygopro.constants.COLORS.BABYBLUE)
@@ -3326,6 +3326,8 @@ ygopro.ctos_follow 'CHAT', true, (buffer, info, client, server, datas)->
         if room.hostinfo.mode==2 and sur_player != client
           ygopro.stoc_send_chat(sur_player, "${surrender_confirm_tag}", ygopro.constants.COLORS.BABYBLUE)
           ygopro.stoc_send_chat(client, "${surrender_confirm_sent}", ygopro.constants.COLORS.BABYBLUE)
+          for player in [client, sur_player]
+            ygopro.stoc_send(client, 'TEAMMATE_SURRENDER')
         else
           ygopro.stoc_send_chat(client, "${surrender_confirm}", ygopro.constants.COLORS.BABYBLUE)
         sur_player.surrend_confirm = true

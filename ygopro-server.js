@@ -4363,7 +4363,7 @@
   });
 
   ygopro.ctos_follow('SURRENDER', true, async function(buffer, info, client, server, datas) {
-    var room, sur_player;
+    var j, len, player, ref, room, sur_player;
     room = ROOM_all[client.rid];
     if (!room) {
       return;
@@ -4376,13 +4376,16 @@
       return true;
     }
     if (room.hostinfo.mode === 2) {
-      if (!settings.modules.tag_duel_surrender) {
-        return true;
-      } else if (!client.surrend_confirm && !CLIENT_get_partner(client).closed && !CLIENT_get_partner(client).is_local) {
+      if (!client.surrend_confirm && !CLIENT_get_partner(client).closed && !CLIENT_get_partner(client).is_local) {
         sur_player = CLIENT_get_partner(client);
         ygopro.stoc_send_chat(sur_player, "${surrender_confirm_tag}", ygopro.constants.COLORS.BABYBLUE);
         ygopro.stoc_send_chat(client, "${surrender_confirm_sent}", ygopro.constants.COLORS.BABYBLUE);
         sur_player.surrend_confirm = true;
+        ref = [client, sur_player];
+        for (j = 0, len = ref.length; j < len; j++) {
+          player = ref[j];
+          ygopro.stoc_send(client, 'TEAMMATE_SURRENDER');
+        }
         return true;
       }
     }
@@ -4418,7 +4421,7 @@
   //else
   //log.info 'BIG BROTHER OK', response.statusCode, roomname, body
   ygopro.ctos_follow('CHAT', true, async function(buffer, info, client, server, datas) {
-    var buy_result, cancel, ccolor, cip, cmd, cmsg, cname, code, color, cvalue, isVip, key, msg, name, oldmsg, ref, room, session_key, struct, sur_player, uname, windbot, word;
+    var buy_result, cancel, ccolor, cip, cmd, cmsg, cname, code, color, cvalue, isVip, j, key, len, msg, name, oldmsg, player, ref, ref1, room, session_key, struct, sur_player, uname, windbot, word;
     room = ROOM_all[client.rid];
     if (!room) {
       return;
@@ -4433,7 +4436,7 @@
     switch (cmd[0]) {
       case '/投降':
       case '/surrender':
-        if (room.duel_stage === ygopro.constants.DUEL_STAGE.BEGIN || (room.hostinfo.mode === 2 && !settings.modules.tag_duel_surrender)) {
+        if (room.duel_stage === ygopro.constants.DUEL_STAGE.BEGIN) {
           return cancel;
         }
         if (room.random_type && room.turn < 3 && !client.flee_free) {
@@ -4450,6 +4453,11 @@
           if (room.hostinfo.mode === 2 && sur_player !== client) {
             ygopro.stoc_send_chat(sur_player, "${surrender_confirm_tag}", ygopro.constants.COLORS.BABYBLUE);
             ygopro.stoc_send_chat(client, "${surrender_confirm_sent}", ygopro.constants.COLORS.BABYBLUE);
+            ref = [client, sur_player];
+            for (j = 0, len = ref.length; j < len; j++) {
+              player = ref[j];
+              ygopro.stoc_send(client, 'TEAMMATE_SURRENDER');
+            }
           } else {
             ygopro.stoc_send_chat(client, "${surrender_confirm}", ygopro.constants.COLORS.BABYBLUE);
           }
@@ -4530,9 +4538,9 @@
           } else if (cmsg = cmd[1]) {
             if (cmsg.toLowerCase() === "help") {
               ygopro.stoc_send_chat(client, "${show_color_list}", ygopro.constants.COLORS.BABYBLUE);
-              ref = ygopro.constants.COLORS;
-              for (cname in ref) {
-                cvalue = ref[cname];
+              ref1 = ygopro.constants.COLORS;
+              for (cname in ref1) {
+                cvalue = ref1[cname];
                 if (cvalue > 10) {
                   ygopro.stoc_send_chat(client, cname, cvalue);
                 }
@@ -4678,19 +4686,19 @@
           Authorization: `Bearer ${settings.modules.chatgpt.token}`
         }
       }).then(function(res) {
-        var chunk, chunks, j, len, line, lines, results, text;
+        var chunk, chunks, l, len1, line, lines, results, text;
         text = res.data.data.text;
         lines = text.split("\n");
         results = [];
-        for (j = 0, len = lines.length; j < len; j++) {
-          line = lines[j];
+        for (l = 0, len1 = lines.length; l < len1; l++) {
+          line = lines[l];
           if (line) {
             chunks = _.chunk(line, 100);
             results.push((function() {
-              var l, len1, results1;
+              var len2, m, results1;
               results1 = [];
-              for (l = 0, len1 = chunks.length; l < len1; l++) {
-                chunk = chunks[l];
+              for (m = 0, len2 = chunks.length; m < len2; m++) {
+                chunk = chunks[m];
                 results1.push(ygopro.stoc_send_chat_to_room(room, chunk.join(''), 1 - client.pos));
               }
               return results1;

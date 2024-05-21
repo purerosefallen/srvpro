@@ -4384,7 +4384,7 @@
         ref = [client, sur_player];
         for (j = 0, len = ref.length; j < len; j++) {
           player = ref[j];
-          ygopro.stoc_send(client, 'TEAMMATE_SURRENDER');
+          ygopro.stoc_send(player, 'TEAMMATE_SURRENDER');
         }
         return true;
       }
@@ -4456,7 +4456,7 @@
             ref = [client, sur_player];
             for (j = 0, len = ref.length; j < len; j++) {
               player = ref[j];
-              ygopro.stoc_send(client, 'TEAMMATE_SURRENDER');
+              ygopro.stoc_send(player, 'TEAMMATE_SURRENDER');
             }
           } else {
             ygopro.stoc_send_chat(client, "${surrender_confirm}", ygopro.constants.COLORS.BABYBLUE);

@@ -1486,7 +1486,8 @@
       player = ref[j];
       ygopro.stoc_send(client, 'HS_PLAYER_ENTER', {
         name: player.name,
-        pos: player.pos
+        pos: player.pos,
+        padding: 0
       });
     }
   };
@@ -4296,7 +4297,8 @@
         if (player !== client) {
           ygopro.stoc_send(client, 'HS_PLAYER_ENTER', {
             name: player.name,
-            pos: player.pos
+            pos: player.pos,
+            padding: 0
           });
         }
       }

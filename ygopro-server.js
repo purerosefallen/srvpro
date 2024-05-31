@@ -1106,7 +1106,7 @@
     playerbanned = randomDuelBanRecord && randomDuelBanRecord.count > 3 && moment_now < randomDuelBanRecord.time;
     result = _.find(ROOM_all, function(room) {
       var ref;
-      return room && room.random_type !== '' && room.duel_stage === ygopro.constants.DUEL_STAGE.BEGIN && !room.windbot && ((type === '' && (room.random_type === settings.modules.random_duel.default_type || settings.modules.random_duel.blank_pass_modes[room.random_type])) || room.random_type === type) && (0 < (ref = room.get_playing_player().length) && ref < max_player) && (settings.modules.random_duel.no_rematch_check || room.get_host() === null || room.get_host().ip !== ROOM_players_oppentlist[player_ip]) && (playerbanned === room.deprecated || type === 'T');
+      return room && room.random_type !== '' && !room.disconnector && room.duel_stage === ygopro.constants.DUEL_STAGE.BEGIN && !room.windbot && ((type === '' && (room.random_type === settings.modules.random_duel.default_type || settings.modules.random_duel.blank_pass_modes[room.random_type])) || room.random_type === type) && (0 < (ref = room.get_playing_player().length) && ref < max_player) && (settings.modules.random_duel.no_rematch_check || room.get_host() === null || room.get_host().ip !== ROOM_players_oppentlist[player_ip]) && (playerbanned === room.deprecated || type === 'T');
     });
     if (result) {
       result.welcome = '${random_duel_enter_room_waiting}';
@@ -4378,7 +4378,7 @@
       return true;
     }
     if (room.hostinfo.mode === 2) {
-      if (!client.surrend_confirm && !CLIENT_get_partner(client).closed && !CLIENT_get_partner(client).is_local) {
+      if (!client.surrend_confirm && !CLIENT_get_partner(client).isClosed && !CLIENT_get_partner(client).is_local) {
         sur_player = CLIENT_get_partner(client);
         ygopro.stoc_send_chat(sur_player, "${surrender_confirm_tag}", ygopro.constants.COLORS.BABYBLUE);
         ygopro.stoc_send_chat(client, "${surrender_confirm_sent}", ygopro.constants.COLORS.BABYBLUE);
@@ -4449,7 +4449,7 @@
           ygopro.ctos_send(client.server, 'SURRENDER');
         } else {
           sur_player = CLIENT_get_partner(client);
-          if (!sur_player || sur_player.closed || sur_player.is_local) {
+          if (!sur_player || sur_player.isClosed || sur_player.is_local) {
             sur_player = client;
           }
           if (room.hostinfo.mode === 2 && sur_player !== client) {

@@ -853,7 +853,7 @@ ROOM_find_or_create_random = global.ROOM_find_or_create_random = (type, player_i
   max_player = if type == 'T' then 4 else 2
   playerbanned = (randomDuelBanRecord and randomDuelBanRecord.count > 3 and moment_now < randomDuelBanRecord.time)
   result = _.find ROOM_all, (room)->
-    return room and room.random_type != '' and room.duel_stage == ygopro.constants.DUEL_STAGE.BEGIN and !room.windbot and
+    return room and room.random_type != '' and !room.disconnector and room.duel_stage == ygopro.constants.DUEL_STAGE.BEGIN and !room.windbot and
     ((type == '' and
       (room.random_type == settings.modules.random_duel.default_type or
         settings.modules.random_duel.blank_pass_modes[room.random_type])) or
@@ -3273,7 +3273,7 @@ ygopro.ctos_follow 'SURRENDER', true, (buffer, info, client, server, datas)->
     ygopro.stoc_send_chat(client, "${surrender_denied}", ygopro.constants.COLORS.BABYBLUE)
     return true
   if room.hostinfo.mode == 2
-    if !client.surrend_confirm and !CLIENT_get_partner(client).closed and !CLIENT_get_partner(client).is_local
+    if !client.surrend_confirm and !CLIENT_get_partner(client).isClosed and !CLIENT_get_partner(client).is_local
       sur_player = CLIENT_get_partner(client)
       ygopro.stoc_send_chat(sur_player, "${surrender_confirm_tag}", ygopro.constants.COLORS.BABYBLUE)
       ygopro.stoc_send_chat(client, "${surrender_confirm_sent}", ygopro.constants.COLORS.BABYBLUE)
@@ -3323,7 +3323,7 @@ ygopro.ctos_follow 'CHAT', true, (buffer, info, client, server, datas)->
         ygopro.ctos_send(client.server, 'SURRENDER')
       else
         sur_player = CLIENT_get_partner(client)
-        if !sur_player or sur_player.closed or sur_player.is_local
+        if !sur_player or sur_player.isClosed or sur_player.is_local
           sur_player = client
         if room.hostinfo.mode==2 and sur_player != client
           ygopro.stoc_send_chat(sur_player, "${surrender_confirm_tag}", ygopro.constants.COLORS.BABYBLUE)

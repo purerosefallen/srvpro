@@ -26,7 +26,6 @@
     "full": "服务器已爆满",
     "max_rooms_count": 0,
     "side_timeout": false,
-    "tag_duel_surrender": true,
     "replay_delay": true,
     "hide_name": false,
     "display_watchers": false,
@@ -227,6 +226,12 @@
         "::1/128"
       ],
       "ip_header": "x-forwarded-for"
+    },
+    "chatgpt": {
+      "enabled": false,
+      "endpoint": "https://chatgpt.hanatan.net",
+      "token": "hanatan",
+      "session": "srvpro"
     },
     "test_mode": {
       "watch_public_hand": false,

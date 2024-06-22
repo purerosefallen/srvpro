@@ -810,6 +810,16 @@
           }
         }
       }, 1000);
+      // clean zombie rooms
+      setInterval(function() {
+        var l, len1, room;
+        for (l = 0, len1 = ROOM_all.length; l < len1; l++) {
+          room = ROOM_all[l];
+          if (room && room.established && room.duel_stage === ygopro.constants.DUEL_STAGE.BEGIN && !room.players.length) {
+            room.terminate();
+          }
+        }
+      }, 600000);
     }
     if (settings.modules.mycard.enabled) {
       setInterval(function() {
@@ -3637,7 +3647,7 @@
           }
         }
       }
-      if (client.surrend_confirm) {
+      if (client.surrend_confirm && (r_player & 0x2) === 0) {
         client.surrend_confirm = false;
         ygopro.stoc_send_chat(client, "${surrender_canceled}", ygopro.constants.COLORS.BABYBLUE);
       }

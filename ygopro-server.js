@@ -1058,7 +1058,7 @@
     }
     if (room = ROOM_find_by_name(name)) {
       return room;
-    } else if (memory_usage >= 90 || (settings.modules.max_rooms_count && rooms_count >= settings.modules.max_rooms_count)) {
+    } else if (memory_usage >= 95 || (settings.modules.max_rooms_count && rooms_count >= settings.modules.max_rooms_count)) {
       return null;
     } else {
       room = new Room(name);

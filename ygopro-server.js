@@ -1121,7 +1121,7 @@
     if (result) {
       result.welcome = '${random_duel_enter_room_waiting}';
     //log.info 'found room', player_name
-    } else if (memory_usage < 90 && !(settings.modules.max_rooms_count && rooms_count >= settings.modules.max_rooms_count)) {
+    } else if (memory_usage < 95 && !(settings.modules.max_rooms_count && rooms_count >= settings.modules.max_rooms_count)) {
       type = type ? type : settings.modules.random_duel.default_type;
       name = type + ',RANDOM#' + Math.floor(Math.random() * 100000);
       result = new Room(name);

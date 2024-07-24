@@ -792,7 +792,7 @@
       var l, len1, room;
       for (l = 0, len1 = ROOM_all.length; l < len1; l++) {
         room = ROOM_all[l];
-        if (room && !room.get_playing_player().length) {
+        if (room && !room.players.length) {
           room.terminate();
         }
       }

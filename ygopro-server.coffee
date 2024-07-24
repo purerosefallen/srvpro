@@ -623,7 +623,7 @@ loadLFList = (path) ->
 
   # clean zombie rooms
   setInterval ()->
-    for room in ROOM_all when room and !room.get_playing_player().length
+    for room in ROOM_all when room and !room.players.length
       room.terminate()
     return
   , 300000

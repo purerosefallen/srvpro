@@ -621,6 +621,13 @@ init = () ->
       return
     , 60000)
 
+  # clean zombie rooms
+  setInterval ()->
+    for room in ROOM_all when room and room.established and room.duel_stage == ygopro.constants.DUEL_STAGE.BEGIN and !room.players.length
+      room.terminate()
+    return
+  , 600000
+
   if settings.modules.random_duel.enabled
     setInterval ()->
       for room in ROOM_all when room and room.duel_stage != ygopro.constants.DUEL_STAGE.BEGIN and room.random_type and room.last_active_time and room.waiting_for_player and room.get_disconnected_count() == 0 and (!settings.modules.side_timeout or room.duel_stage != ygopro.constants.DUEL_STAGE.SIDING) and !room.recovered
@@ -638,12 +645,7 @@ init = () ->
           ROOM_unwelcome(room, room.waiting_for_player, "${random_ban_reason_AFK}")
       return
     , 1000
-    # clean zombie rooms
-    setInterval ()->
-      for room in ROOM_all when room and room.established and room.duel_stage == ygopro.constants.DUEL_STAGE.BEGIN and !room.players.length
-        room.terminate()
-      return
-    , 600000
+
 
   if settings.modules.mycard.enabled
     setInterval ()->

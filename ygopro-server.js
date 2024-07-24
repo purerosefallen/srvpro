@@ -787,6 +787,16 @@
         }
       }, 60000);
     }
+    // clean zombie rooms
+    setInterval(function() {
+      var l, len1, room;
+      for (l = 0, len1 = ROOM_all.length; l < len1; l++) {
+        room = ROOM_all[l];
+        if (room && room.established && room.duel_stage === ygopro.constants.DUEL_STAGE.BEGIN && !room.players.length) {
+          room.terminate();
+        }
+      }
+    }, 600000);
     if (settings.modules.random_duel.enabled) {
       setInterval(async function() {
         var l, len1, room, time_passed;
@@ -810,16 +820,6 @@
           }
         }
       }, 1000);
-      // clean zombie rooms
-      setInterval(function() {
-        var l, len1, room;
-        for (l = 0, len1 = ROOM_all.length; l < len1; l++) {
-          room = ROOM_all[l];
-          if (room && room.established && room.duel_stage === ygopro.constants.DUEL_STAGE.BEGIN && !room.players.length) {
-            room.terminate();
-          }
-        }
-      }, 600000);
     }
     if (settings.modules.mycard.enabled) {
       setInterval(function() {

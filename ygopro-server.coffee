@@ -278,7 +278,7 @@ loadLFList = (path) ->
       lflists.push({date: moment(list.match(/!([\d\.]+)/)[1], 'YYYY.MM.DD').utcOffset("-08:00"), tcg: list.indexOf('TCG') != -1})
   catch
 
-init = () ->
+ init = () ->
   log.info('Reading config.')
   await createDirectoryIfNotExists("./config")
   await importOldConfig()
@@ -623,10 +623,10 @@ init = () ->
 
   # clean zombie rooms
   setInterval ()->
-    for room in ROOM_all when room and room.established and room.duel_stage == ygopro.constants.DUEL_STAGE.BEGIN and !room.players.length
+    for room in ROOM_all when room and !room.get_playing_player().length
       room.terminate()
     return
-  , 600000
+  , 300000
 
   if settings.modules.random_duel.enabled
     setInterval ()->

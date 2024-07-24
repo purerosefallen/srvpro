@@ -792,11 +792,11 @@
       var l, len1, room;
       for (l = 0, len1 = ROOM_all.length; l < len1; l++) {
         room = ROOM_all[l];
-        if (room && room.established && room.duel_stage === ygopro.constants.DUEL_STAGE.BEGIN && !room.players.length) {
+        if (room && !room.get_playing_player().length) {
           room.terminate();
         }
       }
-    }, 600000);
+    }, 300000);
     if (settings.modules.random_duel.enabled) {
       setInterval(async function() {
         var l, len1, room, time_passed;

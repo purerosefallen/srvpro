@@ -1347,7 +1347,7 @@
     dinfo.timeout = tmot;
     disconnect_list[CLIENT_get_authorize_key(client)] = dinfo;
     //console.log("#{client.name} ${disconnect_from_game}")
-    ygopro.stoc_send_chat_to_room(room, `${client.name} \${disconnect_from_game}` + (error ? `: ${error}` : ''));
+    ygopro.stoc_send_chat_to_room(room, `${room.getMaskedPlayerName(client)} \${disconnect_from_game}` + (error ? `: ${error}` : ''));
     if (client.time_confirm_required) {
       client.time_confirm_required = false;
       ygopro.ctos_send(client.server, 'TIME_CONFIRM');
@@ -1499,7 +1499,7 @@
     for (j = 0, len = ref.length; j < len; j++) {
       player = ref[j];
       ygopro.stoc_send(client, 'HS_PLAYER_ENTER', {
-        name: player.name,
+        name: room.getMaskedPlayerName(player, old_client),
         pos: player.pos,
         padding: 0
       });
@@ -1579,7 +1579,7 @@
     CLIENT_import_data(client, dinfo.old_client, room);
     CLIENT_send_reconnect_info(client, client.server, room);
     //console.log("#{client.name} ${reconnect_to_game}")
-    ygopro.stoc_send_chat_to_room(room, `${client.name} \${reconnect_to_game}`);
+    ygopro.stoc_send_chat_to_room(room, `${room.getMaskedPlayerName(client)} \${reconnect_to_game}`);
     CLIENT_reconnect_unregister(client, true);
   };
 
@@ -2686,11 +2686,8 @@
       if (!settings.modules.hide_name || (sight_player && player === sight_player) || !(this.random_type || this.arena)) {
         return player.name;
       }
-      if (this.duel_stage === ygopro.constants.DUEL_STAGE.BEGIN && settings.modules.hide_name === "start") {
-        return "********";
-      }
-      if (settings.modules.hide_name === "always") {
-        return "********";
+      if ((this.duel_stage === ygopro.constants.DUEL_STAGE.BEGIN && settings.modules.hide_name === "start") || settings.modules.hide_name === "always") {
+        return `Player ${player.pos + 1}`;
       }
       return player.name;
     }
@@ -4024,7 +4021,7 @@
       if (pos < 4 && pos !== client.pos) {
         struct = ygopro.structs.get("STOC_HS_PlayerEnter");
         struct._setBuff(buffer);
-        struct.set("name", "********");
+        struct.set("name", room.getMaskedPlayerName());
         buffer = struct.buffer;
       }
     }

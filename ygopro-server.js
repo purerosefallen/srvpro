@@ -2043,20 +2043,21 @@
     }
 
     delete() {
-      var end_time, formatted_replays, index, j, len, log_rep_id, name, player_datas, recorder_buffer, ref, ref1, repbuf, replay_id, room_name, score, score_array, score_form;
+      var end_time, formatted_replays, index, j, len, log_rep_id, name, name_vpass, player_datas, recorder_buffer, ref, ref1, repbuf, replay_id, room_name, score, score_array, score_form;
       if (this.deleted) {
         return;
       }
       //log.info 'room-delete', this.name, ROOM_all.length
       score_array = [];
       ref = this.scores;
-      for (name in ref) {
-        score = ref[name];
+      for (name_vpass in ref) {
+        score = ref[name_vpass];
+        name = name_vpass.split('$')[0];
         score_form = {
-          name: name.split('$')[0],
+          name: name,
           score: score,
           deck: null,
-          name_vpass: name
+          name_vpass: name_vpass
         };
         if (this.decks[name]) {
           score_form.deck = this.decks[name];
@@ -2698,7 +2699,7 @@
   netRequestHandler = function(client) {
     var closeHandler, connect_count, dataHandler, server;
     if (!client.isWs) {
-      client.ip = client.remoteAddress;
+      client.ip = client.remoteAddress || '';
     }
     client.is_local = client.ip && (client.ip.includes('127.0.0.1') || client.ip.includes(real_windbot_server_ip));
     connect_count = ROOM_connected_ip[client.ip] || 0;
@@ -3440,7 +3441,7 @@
     if (room.welcome2) {
       ygopro.stoc_send_chat(client, room.welcome2, ygopro.constants.COLORS.PINK);
     }
-    if (settings.modules.arena_mode.enabled && !client.is_local) { //and not client.score_shown
+    if (settings.modules.arena_mode.enabled && !client.is_local && settings.modules.arena_mode.get_score) { //and not client.score_shown
       request({
         url: settings.modules.arena_mode.get_score + encodeURIComponent(client.name),
         json: true

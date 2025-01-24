@@ -1578,8 +1578,9 @@ class Room
     return if @deleted
     #log.info 'room-delete', this.name, ROOM_all.length
     score_array=[]
-    for name, score of @scores
-      score_form = { name: name.split('$')[0], score: score, deck: null, name_vpass: name }
+    for name_vpass, score of @scores
+      name = name_vpass.split('$')[0]
+      score_form = { name: name, score: score, deck: null, name_vpass: name_vpass }
       if @decks[name]
         score_form.deck = @decks[name]
       score_array.push score_form
@@ -2005,7 +2006,7 @@ class Room
 # 网络连接
 netRequestHandler = (client) ->
   if !client.isWs
-    client.ip = client.remoteAddress
+    client.ip = client.remoteAddress or ''
   client.is_local = client.ip and (client.ip.includes('127.0.0.1') or client.ip.includes(real_windbot_server_ip))
 
   connect_count = ROOM_connected_ip[client.ip] or 0
@@ -2623,7 +2624,7 @@ ygopro.stoc_follow 'JOIN_GAME', false, (buffer, info, client, server, datas)->
     ygopro.stoc_send_chat(client, room.welcome, ygopro.constants.COLORS.BABYBLUE)
   if room.welcome2
     ygopro.stoc_send_chat(client, room.welcome2, ygopro.constants.COLORS.PINK)
-  if settings.modules.arena_mode.enabled and !client.is_local #and not client.score_shown
+  if settings.modules.arena_mode.enabled and !client.is_local and settings.modules.arena_mode.get_score #and not client.score_shown
     request
       url: settings.modules.arena_mode.get_score + encodeURIComponent(client.name),
       json: true

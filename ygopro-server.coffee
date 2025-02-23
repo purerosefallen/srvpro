@@ -1497,6 +1497,13 @@ class Room
         else
           @hostinfo.auto_death = 40
 
+      if (rule.match /(^|，|,)(30EX|SIDEINS)(，|,|$)/)
+        @hostinfo.sideins = true
+      
+      if (rule.match /(^|，|,)(BO5|BESTOF5)(，|,|$)/)
+        @hostinfo.mode = 1
+        @hostinfo.bo5 = true
+
       if settings.modules.tournament_mode.enable_recover and (param = rule.match /(^|，|,)(RC|RECOVER)(\d*)T(\d*)(，|,|$)/)
         @recovered = true
         @recovering = true
@@ -1518,7 +1525,12 @@ class Room
       @spawn()
 
   spawn: (firstSeed) ->
-    param = [0, @hostinfo.lflist, @hostinfo.rule, @hostinfo.mode, @hostinfo.duel_rule,
+    duel_rule_flags = (@hostinfo.duel_rule & 0xf)
+    if @hostinfo.sideins
+      duel_rule_flags |= 0x10
+    if @hostinfo.bo5
+      duel_rule_flags |= 0x20
+    param = [0, @hostinfo.lflist, @hostinfo.rule, @hostinfo.mode, duel_rule_flags,
       (if @hostinfo.no_check_deck then 'T' else 'F'), (if @hostinfo.no_shuffle_deck then 'T' else 'F'),
       @hostinfo.start_lp, @hostinfo.start_hand, @hostinfo.draw_count, @hostinfo.time_limit, @hostinfo.replay_mode]
 

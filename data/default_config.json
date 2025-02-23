@@ -16,7 +16,9 @@
     "draw_count": 1,
     "time_limit": 180,
     "no_watch": false,
-    "auto_death": false
+    "auto_death": false,
+    "bo5": false,
+    "sideins": false,
   },
   "modules": {
     "welcome": "MyCard YGOPro Server",

@@ -1941,6 +1941,13 @@
             this.hostinfo.auto_death = 40;
           }
         }
+        if (rule.match(/(^|，|,)(30EX|SIDEINS)(，|,|$)/)) {
+          this.hostinfo.sideins = true;
+        }
+        if (rule.match(/(^|，|,)(BO5|BESTOF5)(，|,|$)/)) {
+          this.hostinfo.mode = 1;
+          this.hostinfo.bo5 = true;
+        }
         if (settings.modules.tournament_mode.enable_recover && (param = rule.match(/(^|，|,)(RC|RECOVER)(\d*)T(\d*)(，|,|$)/))) {
           this.recovered = true;
           this.recovering = true;
@@ -1966,8 +1973,15 @@
     }
 
     spawn(firstSeed) {
-      var e, i, j, l, param, seeds;
-      param = [0, this.hostinfo.lflist, this.hostinfo.rule, this.hostinfo.mode, this.hostinfo.duel_rule, (this.hostinfo.no_check_deck ? 'T' : 'F'), (this.hostinfo.no_shuffle_deck ? 'T' : 'F'), this.hostinfo.start_lp, this.hostinfo.start_hand, this.hostinfo.draw_count, this.hostinfo.time_limit, this.hostinfo.replay_mode];
+      var duel_rule_flags, e, i, j, l, param, seeds;
+      duel_rule_flags = this.hostinfo.duel_rule & 0xf;
+      if (this.hostinfo.sideins) {
+        duel_rule_flags |= 0x10;
+      }
+      if (this.hostinfo.bo5) {
+        duel_rule_flags |= 0x20;
+      }
+      param = [0, this.hostinfo.lflist, this.hostinfo.rule, this.hostinfo.mode, duel_rule_flags, (this.hostinfo.no_check_deck ? 'T' : 'F'), (this.hostinfo.no_shuffle_deck ? 'T' : 'F'), this.hostinfo.start_lp, this.hostinfo.start_hand, this.hostinfo.draw_count, this.hostinfo.time_limit, this.hostinfo.replay_mode];
       if (firstSeed) {
         param.push(firstSeed);
         seeds = getSeedTimet(2);

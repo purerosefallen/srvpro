@@ -18,7 +18,7 @@
     "no_watch": false,
     "auto_death": false,
     "bo5": false,
-    "sideins": false,
+    "sideins": false
   },
   "modules": {
     "welcome": "MyCard YGOPro Server",

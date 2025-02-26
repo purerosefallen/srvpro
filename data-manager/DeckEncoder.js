@@ -6,6 +6,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.decodeDeck = exports.encodeDeck = void 0;
 const assert_1 = __importDefault(require("assert"));
 function encodeDeck(deck) {
+    deck.main ??= [];
+    deck.side ??= [];
     let pointer = 0;
     const bufferSize = (2 + deck.main.length + deck.side.length) * 4;
     const buffer = Buffer.allocUnsafe(bufferSize);

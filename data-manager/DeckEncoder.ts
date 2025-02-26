@@ -6,6 +6,8 @@ export interface Deck {
 }
 
 export function encodeDeck(deck: Deck) {
+  deck.main ??= [];
+  deck.side ??= [];
     let pointer = 0;
     const bufferSize = (2 + deck.main.length + deck.side.length) * 4;
     const buffer = Buffer.allocUnsafe(bufferSize);

@@ -2332,8 +2332,12 @@
 
     add_windbot(botdata) {
       this.windbot = botdata;
+      url = `http://${settings.modules.windbot.server_ip}:${settings.modules.windbot.port}/?name=${encodeURIComponent(botdata.name)}&deck=${encodeURIComponent(botdata.deck)}&host=${settings.modules.windbot.my_ip}&port=${settings.port}&dialog=${encodeURIComponent(botdata.dialog)}&version=${settings.version}&password=${encodeURIComponent(this.name)}`;
+      if (botdata.deckcode) {
+        url += `&deckcode=${encodeURIComponent(botdata.deckcode.toString('base64'))}`;
+      }
       request({
-        url: `http://${settings.modules.windbot.server_ip}:${settings.modules.windbot.port}/?name=${encodeURIComponent(botdata.name)}&deck=${encodeURIComponent(botdata.deck)}&host=${settings.modules.windbot.my_ip}&port=${settings.port}&dialog=${encodeURIComponent(botdata.dialog)}&version=${settings.version}&password=${encodeURIComponent(this.name)}`
+        url: url
       }, (error, response, body) => {
         if (error) {
           log.warn('windbot add error', error, this.name);

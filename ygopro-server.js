@@ -791,6 +791,16 @@
         }
       }, 60000);
     }
+    // clean zombie rooms
+    setInterval(function() {
+      var l, len1, room;
+      for (l = 0, len1 = ROOM_all.length; l < len1; l++) {
+        room = ROOM_all[l];
+        if (room && !room.players.length) {
+          room.terminate();
+        }
+      }
+    }, 300000);
     if (settings.modules.random_duel.enabled) {
       setInterval(async function() {
         var l, len1, room, time_passed;
@@ -1062,7 +1072,7 @@
     }
     if (room = ROOM_find_by_name(name)) {
       return room;
-    } else if (memory_usage >= 90 || (settings.modules.max_rooms_count && rooms_count >= settings.modules.max_rooms_count)) {
+    } else if (memory_usage >= 95 || (settings.modules.max_rooms_count && rooms_count >= settings.modules.max_rooms_count)) {
       return null;
     } else {
       room = new Room(name);
@@ -1115,7 +1125,7 @@
     if (result) {
       result.welcome = '${random_duel_enter_room_waiting}';
     //log.info 'found room', player_name
-    } else if (memory_usage < 90 && !(settings.modules.max_rooms_count && rooms_count >= settings.modules.max_rooms_count)) {
+    } else if (memory_usage < 95 && !(settings.modules.max_rooms_count && rooms_count >= settings.modules.max_rooms_count)) {
       type = type ? type : settings.modules.random_duel.default_type;
       name = type + ',RANDOM#' + Math.floor(Math.random() * 100000);
       result = new Room(name);
@@ -1931,6 +1941,13 @@
             this.hostinfo.auto_death = 40;
           }
         }
+        if (rule.match(/(^|，|,)(30EX|SIDEINS)(，|,|$)/)) {
+          this.hostinfo.sideins = true;
+        }
+        if (rule.match(/(^|，|,)(BO5|BESTOF5)(，|,|$)/)) {
+          this.hostinfo.mode = 1;
+          this.hostinfo.bo5 = true;
+        }
         if (settings.modules.tournament_mode.enable_recover && (param = rule.match(/(^|，|,)(RC|RECOVER)(\d*)T(\d*)(，|,|$)/))) {
           this.recovered = true;
           this.recovering = true;
@@ -1956,8 +1973,15 @@
     }
 
     spawn(firstSeed) {
-      var e, i, j, l, param, seeds;
-      param = [0, this.hostinfo.lflist, this.hostinfo.rule, this.hostinfo.mode, this.hostinfo.duel_rule, (this.hostinfo.no_check_deck ? 'T' : 'F'), (this.hostinfo.no_shuffle_deck ? 'T' : 'F'), this.hostinfo.start_lp, this.hostinfo.start_hand, this.hostinfo.draw_count, this.hostinfo.time_limit, this.hostinfo.replay_mode];
+      var duel_rule_flags, e, i, j, l, param, seeds;
+      duel_rule_flags = this.hostinfo.duel_rule & 0xf;
+      if (this.hostinfo.sideins) {
+        duel_rule_flags |= 0x10;
+      }
+      if (this.hostinfo.bo5) {
+        duel_rule_flags |= 0x20;
+      }
+      param = [0, this.hostinfo.lflist, this.hostinfo.rule, this.hostinfo.mode, duel_rule_flags, (this.hostinfo.no_check_deck ? 'T' : 'F'), (this.hostinfo.no_shuffle_deck ? 'T' : 'F'), this.hostinfo.start_lp, this.hostinfo.start_hand, this.hostinfo.draw_count, this.hostinfo.time_limit, this.hostinfo.replay_mode];
       if (firstSeed) {
         param.push(firstSeed);
         seeds = getSeedTimet(2);
@@ -2307,9 +2331,14 @@
     }
 
     add_windbot(botdata) {
+      var bot_url;
       this.windbot = botdata;
+      bot_url = `http://${settings.modules.windbot.server_ip}:${settings.modules.windbot.port}/?name=${encodeURIComponent(botdata.name)}&deck=${encodeURIComponent(botdata.deck)}&host=${settings.modules.windbot.my_ip}&port=${settings.port}&dialog=${encodeURIComponent(botdata.dialog)}&version=${settings.version}&password=${encodeURIComponent(this.name)}`;
+      if (botdata.deckcode) {
+        bot_url += `&deckcode=${encodeURIComponent(botdata.deckcode.toString('base64'))}`;
+      }
       request({
-        url: `http://${settings.modules.windbot.server_ip}:${settings.modules.windbot.port}/?name=${encodeURIComponent(botdata.name)}&deck=${encodeURIComponent(botdata.deck)}&host=${settings.modules.windbot.my_ip}&port=${settings.port}&dialog=${encodeURIComponent(botdata.dialog)}&version=${settings.version}&password=${encodeURIComponent(this.name)}`
+        url: bot_url
       }, (error, response, body) => {
         if (error) {
           log.warn('windbot add error', error, this.name);
@@ -3656,7 +3685,7 @@
           }
         }
       }
-      if (client.surrend_confirm) {
+      if (client.surrend_confirm && (r_player & 0x2) === 0) {
         client.surrend_confirm = false;
         ygopro.stoc_send_chat(client, "${surrender_canceled}", ygopro.constants.COLORS.BABYBLUE);
       }

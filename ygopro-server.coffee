@@ -278,7 +278,7 @@ loadLFList = (path) ->
       lflists.push({date: moment(list.match(/!([\d\.]+)/)[1], 'YYYY.MM.DD').utcOffset("-08:00"), tcg: list.indexOf('TCG') != -1})
   catch
 
-init = () ->
+ init = () ->
   log.info('Reading config.')
   await createDirectoryIfNotExists("./config")
   await importOldConfig()
@@ -624,6 +624,13 @@ init = () ->
       return
     , 60000)
 
+  # clean zombie rooms
+  setInterval ()->
+    for room in ROOM_all when room and !room.players.length
+      room.terminate()
+    return
+  , 300000
+
   if settings.modules.random_duel.enabled
     setInterval ()->
       for room in ROOM_all when room and room.duel_stage != ygopro.constants.DUEL_STAGE.BEGIN and room.random_type and room.last_active_time and room.waiting_for_player and room.get_disconnected_count() == 0 and (!settings.modules.side_timeout or room.duel_stage != ygopro.constants.DUEL_STAGE.SIDING) and !room.recovered
@@ -641,6 +648,7 @@ init = () ->
           ROOM_unwelcome(room, room.waiting_for_player, "${random_ban_reason_AFK}")
       return
     , 1000
+
 
   if settings.modules.mycard.enabled
     setInterval ()->
@@ -826,7 +834,7 @@ ROOM_find_or_create_by_name = global.ROOM_find_or_create_by_name = (name, player
     return await ROOM_find_or_create_random(uname, player_ip)
   if room = ROOM_find_by_name(name)
     return room
-  else if memory_usage >= 90 or (settings.modules.max_rooms_count and rooms_count >= settings.modules.max_rooms_count)
+  else if memory_usage >= 95 or (settings.modules.max_rooms_count and rooms_count >= settings.modules.max_rooms_count)
     return null
   else
     room = new Room(name)
@@ -868,7 +876,7 @@ ROOM_find_or_create_random = global.ROOM_find_or_create_random = (type, player_i
   if result
     result.welcome = '${random_duel_enter_room_waiting}'
     #log.info 'found room', player_name
-  else if memory_usage < 90 and not (settings.modules.max_rooms_count and rooms_count >= settings.modules.max_rooms_count)
+  else if memory_usage < 95 and not (settings.modules.max_rooms_count and rooms_count >= settings.modules.max_rooms_count)
     type = if type then type else settings.modules.random_duel.default_type
     name = type + ',RANDOM#' + Math.floor(Math.random() * 100000)
     result = new Room(name)
@@ -1489,6 +1497,13 @@ class Room
         else
           @hostinfo.auto_death = 40
 
+      if (rule.match /(^|，|,)(30EX|SIDEINS)(，|,|$)/)
+        @hostinfo.sideins = true
+      
+      if (rule.match /(^|，|,)(BO5|BESTOF5)(，|,|$)/)
+        @hostinfo.mode = 1
+        @hostinfo.bo5 = true
+
       if settings.modules.tournament_mode.enable_recover and (param = rule.match /(^|，|,)(RC|RECOVER)(\d*)T(\d*)(，|,|$)/)
         @recovered = true
         @recovering = true
@@ -1510,7 +1525,12 @@ class Room
       @spawn()
 
   spawn: (firstSeed) ->
-    param = [0, @hostinfo.lflist, @hostinfo.rule, @hostinfo.mode, @hostinfo.duel_rule,
+    duel_rule_flags = (@hostinfo.duel_rule & 0xf)
+    if @hostinfo.sideins
+      duel_rule_flags |= 0x10
+    if @hostinfo.bo5
+      duel_rule_flags |= 0x20
+    param = [0, @hostinfo.lflist, @hostinfo.rule, @hostinfo.mode, duel_rule_flags,
       (if @hostinfo.no_check_deck then 'T' else 'F'), (if @hostinfo.no_shuffle_deck then 'T' else 'F'),
       @hostinfo.start_lp, @hostinfo.start_hand, @hostinfo.draw_count, @hostinfo.time_limit, @hostinfo.replay_mode]
 
@@ -1747,8 +1767,11 @@ class Room
 
   add_windbot: (botdata)->
     @windbot = botdata
+    bot_url = "http://#{settings.modules.windbot.server_ip}:#{settings.modules.windbot.port}/?name=#{encodeURIComponent(botdata.name)}&deck=#{encodeURIComponent(botdata.deck)}&host=#{settings.modules.windbot.my_ip}&port=#{settings.port}&dialog=#{encodeURIComponent(botdata.dialog)}&version=#{settings.version}&password=#{encodeURIComponent(@name)}"
+    if botdata.deckcode
+      bot_url += "&deckcode=#{encodeURIComponent(botdata.deckcode.toString('base64'))}"
     request
-      url: "http://#{settings.modules.windbot.server_ip}:#{settings.modules.windbot.port}/?name=#{encodeURIComponent(botdata.name)}&deck=#{encodeURIComponent(botdata.deck)}&host=#{settings.modules.windbot.my_ip}&port=#{settings.port}&dialog=#{encodeURIComponent(botdata.dialog)}&version=#{settings.version}&password=#{encodeURIComponent(@name)}"
+      url: bot_url
     , (error, response, body)=>
       if error
         log.warn 'windbot add error', error, this.name
@@ -2789,7 +2812,7 @@ ygopro.stoc_follow 'GAME_MSG', true, (buffer, info, client, server, datas)->
             ygopro.stoc_send_chat_to_room(room, "${death_remain_final}", ygopro.constants.COLORS.BABYBLUE)
         else
           ygopro.stoc_send_chat_to_room(room, "${death_remain_part1}" + (room.death - room.turn) + "${death_remain_part2}", ygopro.constants.COLORS.BABYBLUE)
-    if client.surrend_confirm
+    if client.surrend_confirm and (r_player & 0x2) == 0
       client.surrend_confirm = false
       ygopro.stoc_send_chat(client, "${surrender_canceled}", ygopro.constants.COLORS.BABYBLUE)
 

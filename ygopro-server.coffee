@@ -1769,11 +1769,11 @@ class Room
 
   add_windbot: (botdata)->
     @windbot = botdata
-    url = "http://#{settings.modules.windbot.server_ip}:#{settings.modules.windbot.port}/?name=#{encodeURIComponent(botdata.name)}&deck=#{encodeURIComponent(botdata.deck)}&host=#{settings.modules.windbot.my_ip}&port=#{settings.port}&dialog=#{encodeURIComponent(botdata.dialog)}&version=#{settings.version}&password=#{encodeURIComponent(@name)}"
+    bot_url = "http://#{settings.modules.windbot.server_ip}:#{settings.modules.windbot.port}/?name=#{encodeURIComponent(botdata.name)}&deck=#{encodeURIComponent(botdata.deck)}&host=#{settings.modules.windbot.my_ip}&port=#{settings.port}&dialog=#{encodeURIComponent(botdata.dialog)}&version=#{settings.version}&password=#{encodeURIComponent(@name)}"
     if botdata.deckcode
-      url += "&deckcode=#{encodeURIComponent(botdata.deckcode.toString('base64'))}"
+      bot_url += "&deckcode=#{encodeURIComponent(botdata.deckcode.toString('base64'))}"
     request
-      url: url
+      url: bot_url
     , (error, response, body)=>
       if error
         log.warn 'windbot add error', error, this.name

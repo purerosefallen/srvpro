@@ -23,6 +23,8 @@ const auth = require('./ygopro-auth.js');
 const settings = loadJSON('./config/config.json');
 config = settings.modules.tournament_mode;
 challonge_config = settings.modules.challonge;
+const { Challonge } = require('./challonge');
+const challonge = new Challonge(challonge_config);
 ssl_config = settings.modules.http.ssl;
 
 const _async = require("async");
@@ -73,7 +75,7 @@ const readDeck = async function(deck_name, deck_full_path) {
     const deck={};
     deck.name=deck_name;
     deck_text = await fs.promises.readFile(deck_full_path, { encoding: "ASCII" });
-    deck_array = deck_text.split("\n");
+    deck_array = deck_text.split(/\r?\n/);
     deck.main = [];
     deck.extra = [];
     deck.side = [];
@@ -87,7 +89,7 @@ const readDeck = async function(deck_name, deck_full_path) {
             current_deck = deck.side;
         }
         card = parseInt(line);
-        if (!isNaN(card)) {
+        if (!isNaN(card) && !line.endsWith("#")) {
             current_deck.push(card);
         }
     }
@@ -156,19 +158,11 @@ const UploadToChallonge = async function () {
     sendResponse("读取玩家列表完毕，共有" + player_list.length + "名玩家。");
     try {
         sendResponse("开始清空 Challonge 玩家列表。");
-        await axios.delete(`https://api.challonge.com/v1/tournaments/${challonge_config.tournament_id}/participants/clear.json`, {
-            params: {
-                api_key: challonge_config.api_key
-            },
-            validateStatus: () => true,
-        });
+        await challonge.clearParticipants();
         sendResponse("开始上传玩家列表至 Challonge。");
         for (const chunk of _.chunk(player_list, 10)) {
             sendResponse(`开始上传玩家 ${chunk.join(', ')} 至 Challonge。`);
-            await axios.post(`https://api.challonge.com/v1/tournaments/${challonge_config.tournament_id}/participants/bulk_add.json`, {
-            api_key: challonge_config.api_key,
-            participants: chunk.map(name => ({ name })),
-        });
+            await challonge.uploadParticipants(chunk);
         }
         sendResponse("玩家列表上传完成。");
     } catch (e) {

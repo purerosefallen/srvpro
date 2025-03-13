@@ -90,6 +90,7 @@
       "record_match_scores": false,
       "post_match_scores": false,
       "post_match_accesskey": "123456",
+      "disable_chat": false,
       "blank_pass_modes": {
         "S": true,
         "M": true,
@@ -163,7 +164,8 @@
       "cache_ttl": 60000,
       "no_match_mode": false,
       "api_key": "123",
-      "tournament_id": "456"
+      "tournament_id": "456",
+      "challonge_url": "https://api.challonge.com"
     },
     "deck_log": {
       "enabled": false,

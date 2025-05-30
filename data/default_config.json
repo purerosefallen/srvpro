@@ -209,6 +209,9 @@
       "show_info": true,
       "log_save_path": "./config/",
       "deck_dashboard_min_deck": 40,
+      "deck_dashboard_max_deck": 60,
+      "deck_dashboard_max_extra": 15,
+      "deck_dashboard_max_side": 15,
       "port": 7933
     },
     "athletic_check": {

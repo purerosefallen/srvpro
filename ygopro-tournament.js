@@ -176,7 +176,7 @@ const receiveDecks = function(files, callback) {
     _async.eachSeries(files, async(file) => {
         if (_.endsWith(file.name, ".ydk")) {
             const deck = await readDeck(file.name, file.path);
-            if (deck.main.length >= 40) {
+            if (deck.main.length >= (config.deck_dashboard_min_deck || 40)) {
                 fs.createReadStream(file.path).pipe(fs.createWriteStream(config.deck_path + file.name));
                 result.push({
                     file: file.name,

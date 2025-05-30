@@ -208,6 +208,7 @@
       "show_ip": true,
       "show_info": true,
       "log_save_path": "./config/",
+      "deck_dashboard_min_deck": 40,
       "port": 7933
     },
     "athletic_check": {

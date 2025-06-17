@@ -31,6 +31,10 @@
     "replay_delay": true,
     "hide_name": false,
     "display_watchers": false,
+    "trusted_proxies": [
+      "127.0.0.1/8",
+      "::1/128"
+    ],
     "i18n": {
       "auto_pick": false,
       "default": "zh-cn",
@@ -225,10 +229,6 @@
     "neos": {
       "enabled": false,
       "port": 7977,
-      "trusted_proxies": [
-        "127.0.0.1/8",
-        "::1/128"
-      ],
       "ip_header": "x-forwarded-for"
     },
     "chatgpt": {

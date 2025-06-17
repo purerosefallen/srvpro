@@ -1365,6 +1365,11 @@ class Room
 
     else if ((param = name.match /(.+)#/) != null)
       rule = param[1].toUpperCase()
+      for banned_param in settings.modules.banned_room_params
+        rule = rule.replace(new RegExp("(，|,)#{banned_param}(，|,)", 'g'), ',')
+        rule = rule.replace(new RegExp("^#{banned_param}(，|,)", 'g'), '')
+        rule = rule.replace(new RegExp("(，|,)#{banned_param}$", 'g'), '')
+        rule = rule.replace(new RegExp("^#{banned_param}$", 'g'), '')
 
       if (rule.match /(^|，|,)(M|MATCH)(，|,|$)/)
         @hostinfo.mode = 1

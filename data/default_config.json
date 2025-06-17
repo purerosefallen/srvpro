@@ -64,6 +64,7 @@
         "KR": "ko-kr"
       }
     },
+    "banned_room_params": [],
     "tips": {
       "enabled": true,
       "split_zh": false,

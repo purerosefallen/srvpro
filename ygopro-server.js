@@ -1726,7 +1726,7 @@
 
   Room = class Room {
     constructor(name, hostinfo) {
-      var death_time, draw_count, duel_rule, extra_mode_func, lflist, param, rule, start_hand, start_lp, time_limit;
+      var banned_param, death_time, draw_count, duel_rule, extra_mode_func, j, len, lflist, param, ref, rule, start_hand, start_lp, time_limit;
       this.hostinfo = hostinfo;
       this.name = name;
       //@alive = true
@@ -1782,6 +1782,14 @@
         this.hostinfo.draw_count = parseInt(param[8]);
       } else if ((param = name.match(/(.+)#/)) !== null) {
         rule = param[1].toUpperCase();
+        ref = settings.modules.banned_room_params;
+        for (j = 0, len = ref.length; j < len; j++) {
+          banned_param = ref[j];
+          rule = rule.replace(new RegExp(`(，|,)${banned_param}(，|,)`, 'g'), ',');
+          rule = rule.replace(new RegExp(`^${banned_param}(，|,)`, 'g'), '');
+          rule = rule.replace(new RegExp(`(，|,)${banned_param}$`, 'g'), '');
+          rule = rule.replace(new RegExp(`^${banned_param}$`, 'g'), '');
+        }
         if (rule.match(/(^|，|,)(M|MATCH)(，|,|$)/)) {
           this.hostinfo.mode = 1;
         }

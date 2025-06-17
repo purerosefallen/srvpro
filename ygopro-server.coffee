@@ -1371,7 +1371,7 @@ class Room
 
       if (rule.match /(^|，|,)(T|TAG)(，|,|$)/)
         @hostinfo.mode = 2
-        @hostinfo.start_lp = 16000
+        @hostinfo.start_lp = settings.hostinfo.start_lp * 2
 
       if (rule.match /(^|，|,)(OOR|OCGONLYRANDOM)(，|,|$)/)
         @hostinfo.rule = 0

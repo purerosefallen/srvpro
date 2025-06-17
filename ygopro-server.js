@@ -1787,7 +1787,7 @@
         }
         if (rule.match(/(^|，|,)(T|TAG)(，|,|$)/)) {
           this.hostinfo.mode = 2;
-          this.hostinfo.start_lp = 16000;
+          this.hostinfo.start_lp = settings.hostinfo.start_lp * 2;
         }
         if (rule.match(/(^|，|,)(OOR|OCGONLYRANDOM)(，|,|$)/)) {
           this.hostinfo.rule = 0;

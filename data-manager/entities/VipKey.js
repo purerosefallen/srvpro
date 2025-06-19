@@ -23,6 +23,7 @@ let VipKey = class VipKey extends CreateAndUpdateTimeBase_1.CreateAndUpdateTimeB
         return { key: this.key, type: this.type };
     }
 };
+exports.VipKey = VipKey;
 __decorate([
     (0, typeorm_1.PrimaryGeneratedColumn)({ unsigned: true, type: "bigint" }),
     __metadata("design:type", Number)
@@ -45,8 +46,6 @@ __decorate([
     (0, typeorm_1.ManyToOne)(() => User_1.User, user => user.usedKeys),
     __metadata("design:type", User_1.User)
 ], VipKey.prototype, "usedBy", void 0);
-VipKey = __decorate([
+exports.VipKey = VipKey = __decorate([
     (0, typeorm_1.Entity)()
 ], VipKey);
-exports.VipKey = VipKey;
-//# sourceMappingURL=VipKey.js.map

@@ -372,7 +372,7 @@
   };
 
   init = async function() {
-    var AthleticChecker, Challonge, DataManager, chat_color, config, cppversion, defaultConfig, default_data, dirPath, dns, e, get_rooms_count, http_server, https, httpsOptions, https_server, imported, j, key, keysFromEnv, l, len, len1, len2, m, main_http_server, mkdirList, neosHttpServer, neosWsServer, pgClient, pg_client, pg_query, plugin_filename, plugin_list, plugin_path, postData, settingKey, val, valFromDefault, vip_info, ws;
+    var AthleticChecker, Challonge, DataManager, chat_color, config, cppversion, defaultConfig, default_data, dirPath, dns, e, expansions, get_rooms_count, http_server, https, httpsOptions, https_server, imported, j, key, keysFromEnv, l, len, len1, len2, len3, m, main_http_server, mkdirList, n, neosHttpServer, neosWsServer, pgClient, pg_client, pg_query, plugin_filename, plugin_list, plugin_path, postData, ref, settingKey, val, valFromDefault, vip_info, ws;
     log.info('Reading config.');
     await createDirectoryIfNotExists("./config");
     await importOldConfig();
@@ -637,7 +637,7 @@
     }
     try {
       log.info("Reading YGOPro version.");
-      cppversion = parseInt(((await fs.promises.readFile('ygopro/gframe/game.cpp', 'utf8'))).match(/PRO_VERSION = ([x\dABCDEF]+)/)[1], '16');
+      cppversion = parseInt(((await fs.promises.readFile(path.resolve(settings.modules.ygopro_path, 'gframe', 'game.cpp'), 'utf8'))).match(/PRO_VERSION = ([x\dABCDEF]+)/)[1], '16');
       await setting_change(settings, "version", cppversion);
       log.info("ygopro version 0x" + settings.version.toString(16), "(from source code)");
     } catch (error1) {
@@ -646,8 +646,12 @@
     }
     // load the lflist of current date
     log.info("Reading banlists.");
-    await loadLFList('ygopro/expansions/lflist.conf');
-    await loadLFList('ygopro/lflist.conf');
+    ref = settings.modules.expansions_path;
+    for (l = 0, len1 = ref.length; l < len1; l++) {
+      expansions = ref[l];
+      await loadLFList(path.resolve(settings.modules.ygopro_path, expansions, 'lflist.conf'));
+    }
+    await loadLFList(path.resolve(settings.modules.ygopro_path, 'lflist.conf'));
     badwordR = global.badwordR = {};
     badwordR.level0 = new RegExp('(?:' + badwords.level0.join(')|(?:') + ')', 'i');
     badwordR.level1 = new RegExp('(?:' + badwords.level1.join(')|(?:') + ')', 'i');
@@ -662,10 +666,10 @@
     if (settings.modules.max_rooms_count) {
       rooms_count = 0;
       get_rooms_count = function() {
-        var _rooms_count, l, len1, room;
+        var _rooms_count, len2, m, room;
         _rooms_count = 0;
-        for (l = 0, len1 = ROOM_all.length; l < len1; l++) {
-          room = ROOM_all[l];
+        for (m = 0, len2 = ROOM_all.length; m < len2; m++) {
+          room = ROOM_all[m];
           if (room && room.established) {
             _rooms_count++;
           }
@@ -747,9 +751,9 @@
     if (settings.modules.tips.enabled) {
       if (settings.modules.tips.interval) {
         setInterval(function() {
-          var l, len1, room;
-          for (l = 0, len1 = ROOM_all.length; l < len1; l++) {
-            room = ROOM_all[l];
+          var len2, m, room;
+          for (m = 0, len2 = ROOM_all.length; m < len2; m++) {
+            room = ROOM_all[m];
             if (room && room.established && room.duel_stage !== ygopro.constants.END) {
               if (room.duel_stage !== ygopro.constants.DUEL_STAGE.DUELING) {
                 ygopro.stoc_send_random_tip_to_room(room);
@@ -760,9 +764,9 @@
       }
       if (settings.modules.tips.interval_ingame) {
         setInterval(function() {
-          var l, len1, room;
-          for (l = 0, len1 = ROOM_all.length; l < len1; l++) {
-            room = ROOM_all[l];
+          var len2, m, room;
+          for (m = 0, len2 = ROOM_all.length; m < len2; m++) {
+            room = ROOM_all[m];
             if (room && room.established && room.duel_stage !== ygopro.constants.END) {
               if (room.duel_stage === ygopro.constants.DUEL_STAGE.DUELING) {
                 ygopro.stoc_send_random_tip_to_room(room);
@@ -798,9 +802,9 @@
     }
     // clean zombie rooms
     setInterval(function() {
-      var l, len1, room;
-      for (l = 0, len1 = ROOM_all.length; l < len1; l++) {
-        room = ROOM_all[l];
+      var len2, m, room;
+      for (m = 0, len2 = ROOM_all.length; m < len2; m++) {
+        room = ROOM_all[m];
         if (room && !room.players.length) {
           room.terminate();
         }
@@ -808,9 +812,9 @@
     }, 300000);
     if (settings.modules.random_duel.enabled) {
       setInterval(async function() {
-        var l, len1, room, time_passed;
-        for (l = 0, len1 = ROOM_all.length; l < len1; l++) {
-          room = ROOM_all[l];
+        var len2, m, room, time_passed;
+        for (m = 0, len2 = ROOM_all.length; m < len2; m++) {
+          room = ROOM_all[m];
           if (!(room && room.duel_stage !== ygopro.constants.DUEL_STAGE.BEGIN && room.random_type && room.last_active_time && room.waiting_for_player && room.get_disconnected_count() === 0 && (!settings.modules.side_timeout || room.duel_stage !== ygopro.constants.DUEL_STAGE.SIDING) && !room.recovered)) {
             continue;
           }
@@ -832,9 +836,9 @@
     }
     if (settings.modules.mycard.enabled) {
       setInterval(function() {
-        var l, len1, len2, m, player, room, time_passed, waited_time;
-        for (l = 0, len1 = ROOM_all.length; l < len1; l++) {
-          room = ROOM_all[l];
+        var len2, len3, m, n, player, room, time_passed, waited_time;
+        for (m = 0, len2 = ROOM_all.length; m < len2; m++) {
+          room = ROOM_all[m];
           if (!(room && room.duel_stage !== ygopro.constants.DUEL_STAGE.BEGIN && room.arena && room.last_active_time && room.waiting_for_player && room.get_disconnected_count() === 0 && (!settings.modules.side_timeout || room.duel_stage !== ygopro.constants.DUEL_STAGE.SIDING) && !room.recovered)) {
             continue;
           }
@@ -851,8 +855,8 @@
           }
         }
         if (true) { // settings.modules.arena_mode.punish_quit_before_match
-          for (m = 0, len2 = ROOM_all.length; m < len2; m++) {
-            room = ROOM_all[m];
+          for (n = 0, len3 = ROOM_all.length; n < len3; n++) {
+            room = ROOM_all[n];
             if (!(room && room.arena && room.duel_stage === ygopro.constants.DUEL_STAGE.BEGIN && room.get_playing_player().length < 2)) {
               continue;
             }
@@ -872,13 +876,13 @@
     }
     if (settings.modules.heartbeat_detection.enabled) {
       setInterval(function() {
-        var l, len1, len2, m, player, ref, room;
-        for (l = 0, len1 = ROOM_all.length; l < len1; l++) {
-          room = ROOM_all[l];
+        var len2, len3, m, n, player, ref1, room;
+        for (m = 0, len2 = ROOM_all.length; m < len2; m++) {
+          room = ROOM_all[m];
           if (room && room.duel_stage !== ygopro.constants.DUEL_STAGE.BEGIN && (room.hostinfo.time_limit === 0 || room.duel_stage !== ygopro.constants.DUEL_STAGE.DUELING) && !room.windbot) {
-            ref = room.get_playing_player();
-            for (m = 0, len2 = ref.length; m < len2; m++) {
-              player = ref[m];
+            ref1 = room.get_playing_player();
+            for (n = 0, len3 = ref1.length; n < len3; n++) {
+              player = ref1[n];
               if (player && (room.duel_stage !== ygopro.constants.DUEL_STAGE.SIDING || player.selected_preduel)) {
                 CLIENT_heartbeat_register(player, true);
               }
@@ -891,10 +895,10 @@
       spawn_windbot();
     }
     setInterval(function() {
-      var l, len1, results, room;
+      var len2, m, results, room;
       results = [];
-      for (l = 0, len1 = ROOM_all.length; l < len1; l++) {
-        room = ROOM_all[l];
+      for (m = 0, len2 = ROOM_all.length; m < len2; m++) {
+        room = ROOM_all[m];
         if (!(room && room.duel_stage !== ygopro.constants.DUEL_STAGE.BEGIN && room.hostinfo.auto_death && !room.auto_death_triggered && moment_now.diff(room.start_time) > 60000 * room.hostinfo.auto_death)) {
           continue;
         }
@@ -941,15 +945,15 @@
       neosHttpServer.listen(settings.modules.neos.port);
     }
     mkdirList = ["./plugins", settings.modules.tournament_mode.deck_path, settings.modules.tournament_mode.replay_path, settings.modules.tournament_mode.log_save_path, settings.modules.deck_log.local];
-    for (l = 0, len1 = mkdirList.length; l < len1; l++) {
-      dirPath = mkdirList[l];
+    for (m = 0, len2 = mkdirList.length; m < len2; m++) {
+      dirPath = mkdirList[m];
       await createDirectoryIfNotExists(dirPath);
     }
     plugin_list = (await fs.promises.readdir("./plugins"));
-    for (m = 0, len2 = plugin_list.length; m < len2; m++) {
-      plugin_filename = plugin_list[m];
+    for (n = 0, len3 = plugin_list.length; n < len3; n++) {
+      plugin_filename = plugin_list[n];
       if (plugin_filename.endsWith('.js')) {
-        plugin_path = process.cwd() + "/plugins/" + plugin_filename;
+        plugin_path = path.resolve(process.cwd(), "plugins", plugin_filename);
         require(plugin_path);
         log.info("Plugin loaded:", plugin_filename);
       }
@@ -2049,11 +2053,16 @@
           firstSeedBuf.writeUInt32LE(firstSeed[i], i * 4);
         }
         param.push(firstSeedBuf.toString('base64'));
-        console.log(firstSeed, firstSeedBuf.toString('base64'));
       }
       try {
-        this.process = spawn('./ygopro', param, {
-          cwd: 'ygopro'
+        this.process = spawn(path.resolve(settings.modules.ygopro_path, settings.modules.ygopro_exec_path), param, {
+          cwd: path.resolve(settings.modules.ygopro_path),
+          env: {
+            ...process.env,
+            YGOPRO_EXPANSIONS: settings.modules.expansions_path.map(s(() => {
+              return path.resolve(settings.modules.ygopro_path, s);
+            })).join(',')
+          }
         });
         this.process_pid = this.process.pid;
         this.process.on('error', (err) => {

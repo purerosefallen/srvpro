@@ -494,7 +494,7 @@ loadLFList = (path) ->
     catch
   try
     log.info("Reading YGOPro version.")
-    cppversion = parseInt((await fs.promises.readFile('ygopro/gframe/game.cpp', 'utf8')).match(/PRO_VERSION = ([x\dABCDEF]+)/)[1], '16')
+    cppversion = parseInt((await fs.promises.readFile(path.resolve(settings.modules.ygopro_path, 'gframe', 'game.cpp'), 'utf8')).match(/PRO_VERSION = ([x\dABCDEF]+)/)[1], '16')
     await setting_change(settings, "version", cppversion)
     log.info "ygopro version 0x"+settings.version.toString(16), "(from source code)"
   catch
@@ -502,8 +502,9 @@ loadLFList = (path) ->
     log.info "ygopro version 0x"+settings.version.toString(16), "(from config)"
   # load the lflist of current date
   log.info("Reading banlists.")
-  await loadLFList('ygopro/expansions/lflist.conf')
-  await loadLFList('ygopro/lflist.conf')
+  for expansions in settings.modules.expansions_path
+    await loadLFList(path.resolve(settings.modules.ygopro_path, expansions, 'lflist.conf'))
+  await loadLFList(path.resolve(settings.modules.ygopro_path, 'lflist.conf'))
 
   badwordR = global.badwordR = {}
   badwordR.level0=new RegExp('(?:'+badwords.level0.join(')|(?:')+')','i');
@@ -748,7 +749,7 @@ loadLFList = (path) ->
   plugin_list = await fs.promises.readdir("./plugins")
   for plugin_filename in plugin_list
     if plugin_filename.endsWith '.js'
-      plugin_path = process.cwd() + "/plugins/" + plugin_filename
+      plugin_path = path.resolve(process.cwd(), "plugins", plugin_filename)
       require(plugin_path)
       log.info("Plugin loaded:", plugin_filename)
 
@@ -1586,15 +1587,26 @@ class Room
       @hostinfo.start_lp, @hostinfo.start_hand, @hostinfo.draw_count, @hostinfo.time_limit, @hostinfo.replay_mode]
 
     if firstSeed
-     # new replay with extended header and long seed
+      # new replay with extended header and long seed
       firstSeedBuf = Buffer.allocUnsafe(firstSeed.length * 4)
       for i in [0...firstSeed.length]
         firstSeedBuf.writeUInt32LE(firstSeed[i], i * 4)
       param.push(firstSeedBuf.toString('base64'))
-      console.log(firstSeed, firstSeedBuf.toString('base64'))
 
     try
-      @process = spawn './ygopro', param, {cwd: 'ygopro'}
+      @process = spawn(
+        path.resolve(settings.modules.ygopro_path, settings.modules.ygopro_exec_path),
+        param,
+        {
+          cwd: path.resolve(settings.modules.ygopro_path),
+          env: {
+            ...process.env,
+            YGOPRO_EXPANSIONS: settings.modules.expansions_path
+              .map(s => path.resolve(settings.modules.ygopro_path, s))
+              .join(',')
+          }
+        }
+      )
       @process_pid = @process.pid
       @process.on 'error', (err)=>
         log.warn 'CREATE ROOM ERROR', err

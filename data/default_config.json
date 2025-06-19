@@ -35,6 +35,11 @@
       "127.0.0.1/8",
       "::1/128"
     ],
+    "ygopro_path": "./ygopro",
+    "ygopro_exec_path": "./ygopro",
+    "expansions_path": [
+      "./expansions"
+    ],
     "i18n": {
       "auto_pick": false,
       "default": "zh-cn",

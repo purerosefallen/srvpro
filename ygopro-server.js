@@ -2059,9 +2059,9 @@
           cwd: path.resolve(settings.modules.ygopro_path),
           env: {
             ...process.env,
-            YGOPRO_EXPANSIONS: settings.modules.expansions_path.map(s(() => {
+            YGOPRO_EXPANSIONS: settings.modules.expansions_path.map(function(s) {
               return path.resolve(settings.modules.ygopro_path, s);
-            })).join(',')
+            }).join(',')
           }
         });
         this.process_pid = this.process.pid;

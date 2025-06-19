@@ -1602,7 +1602,9 @@ class Room
           env: {
             ...process.env,
             YGOPRO_EXPANSIONS: settings.modules.expansions_path
-              .map(s => path.resolve(settings.modules.ygopro_path, s))
+              .map((s) -> 
+                path.resolve(settings.modules.ygopro_path, s)
+              )
               .join(',')
           }
         }

@@ -79,7 +79,8 @@ import_datas = global.import_datas = [
   "join_time",
   "arena_quit_free",
   "replays_sent",
-  "victory_words"
+  "victory_words",
+  "actual_version",
 ]
 
 merge = require 'deepmerge'
@@ -91,6 +92,16 @@ loadJSONAsync = require('load-json-file')
 util = require("util")
 
 Q = require("q")
+
+YGOProDeck = require('ygopro-deck-encode').default
+
+Aragami = require('aragami').Aragami
+
+aragami = global.aragami = new Aragami() # we use memory mode only
+
+aragami_classes = global.aragami_classes = require('./aragami-classes.js')
+
+msg_polyfill = global.msg_polyfill = require('./msg-polyfill/index.js')
 
 #heapdump = require 'heapdump'
 
@@ -2339,6 +2350,41 @@ ygopro.ctos_follow 'PLAYER_INFO', true, (buffer, info, client, server, datas)->
   await return false
 
 ygopro.ctos_follow 'JOIN_GAME', true, (buffer, info, client, server, datas)->
+  check_version = () ->
+    bad_version = (msg) ->
+      ygopro.stoc_send_chat(client, msg, ygopro.constants.COLORS.RED)
+      ygopro.stoc_send client, 'ERROR_MSG', {
+        msg: 4
+        code: settings.version
+      }
+      CLIENT_kick(client)
+      return false
+    if info.version == settings.version
+      return true
+    if settings.alternative_versions.includes(info.version)
+      client_key = CLIENT_get_authorize_key(client)
+      if !await aragami.has(aragami_classes.ClientVersionBlocker, client_key)
+        blocker_obj = new aragami_classes.ClientVersionBlocker()
+        blocker_obj.clientKey = client_key
+        await aragami.set(blocker_obj)
+        return bad_version("${version_to_polyfill}")
+      else
+        await aragami.del(aragami_classes.ClientVersionBlocker, client_key)
+        return true
+    return bad_version(if info.version < settings.version then settings.modules.update else settings.modules.wait_update)
+  polyfill_version = () ->
+    if client.actual_version
+      # already polyfilled
+      return
+    client.actual_version = info.version
+    if info.version != settings.version and settings.alternative_versions.includes(info.version)
+      info.version = settings.version
+      struct = ygopro.structs.get("CTOS_JoinGame")
+      struct._setBuff(buffer)
+      struct.set("version", info.version)
+      buffer = struct.buffer
+      ygopro.stoc_send_chat(client, "${version_polyfilled}", ygopro.constants.COLORS.BABYBLUE)
+    await return
 #log.info info
   info.pass=info.pass.trim()
   client.pass = info.pass
@@ -2347,9 +2393,10 @@ ygopro.ctos_follow 'JOIN_GAME', true, (buffer, info, client, server, datas)->
     return
   else if settings.modules.stop
     ygopro.stoc_die(client, settings.modules.stop)
+    return
   else if info.pass == "Marshtomp" or info.pass == "the Big Brother"
     ygopro.stoc_die(client, "${bad_user_name}")
-
+    return
   else if info.pass.toUpperCase()=="R" and settings.modules.cloud_replay.enabled
     ygopro.stoc_send_chat(client,"${cloud_replay_hint}", ygopro.constants.COLORS.BABYBLUE)
     replays = await dataManager.getCloudReplaysFromKey(CLIENT_get_authorize_key(client))
@@ -2360,7 +2407,7 @@ ygopro.ctos_follow 'JOIN_GAME', true, (buffer, info, client, server, datas)->
       code: 9
     }
     CLIENT_kick(client)
-
+    return
   else if info.pass.toUpperCase()=="IP"
     ygopro.stoc_send_chat(client, "IP: " + client.ip, ygopro.constants.COLORS.BABYBLUE)
     ygopro.stoc_send client, 'ERROR_MSG', {
@@ -2368,7 +2415,7 @@ ygopro.ctos_follow 'JOIN_GAME', true, (buffer, info, client, server, datas)->
       code: 9
     }
     CLIENT_kick(client)
-
+    return
   else if info.pass.toUpperCase()=="RC" and settings.modules.tournament_mode.enable_recover
     ygopro.stoc_send_chat(client,"${recover_replay_hint}", ygopro.constants.COLORS.BABYBLUE)
     available_logs = await dataManager.getDuelLogFromRecoverSearch(client.name_vpass)
@@ -2379,28 +2426,21 @@ ygopro.ctos_follow 'JOIN_GAME', true, (buffer, info, client, server, datas)->
       code: 9
     }
     CLIENT_kick(client)
-
+    return
   else if info.pass[0...2].toUpperCase()=="R#" and settings.modules.cloud_replay.enabled
     replay_id=info.pass.split("#")[1]
     replay = await dataManager.getCloudReplayFromId(replay_id)
     await client.open_cloud_replay(replay)
-
+    return
   else if info.pass.toUpperCase()=="W" and settings.modules.cloud_replay.enabled
     replay = await dataManager.getRandomCloudReplay()
     await client.open_cloud_replay(replay)
-
-  else if info.version != settings.version and !settings.alternative_versions.includes(info.version)
-    ygopro.stoc_send_chat(client, (if info.version < settings.version then settings.modules.update else settings.modules.wait_update), ygopro.constants.COLORS.RED)
-    ygopro.stoc_send client, 'ERROR_MSG', {
-      msg: 4
-      code: settings.version
-    }
-    CLIENT_kick(client)
-
+    return
+  else if !await check_version()
+    return
   else if !info.pass.length and !settings.modules.random_duel.enabled and !settings.modules.windbot.enabled and !settings.modules.challonge.enabled
     ygopro.stoc_die(client, "${blank_room_name}")
-
-
+    return
   else if settings.modules.mysql.enabled and await dataManager.checkBan("name", client.name) #账号被封
     exactBan = await dataManager.checkBanWithNameAndIP(client.name, client.ip)
     if !exactBan
@@ -2408,23 +2448,17 @@ ygopro.ctos_follow 'JOIN_GAME', true, (buffer, info, client, server, datas)->
       await dataManager.banPlayer(exactBan)
     log.warn("BANNED USER LOGIN", client.name, client.ip)
     ygopro.stoc_die(client, "${banned_user_login}")
-
+    return
   else if settings.modules.mysql.enabled and await dataManager.checkBan("ip", client.ip) #IP被封
     log.warn("BANNED IP LOGIN", client.name, client.ip)
     ygopro.stoc_die(client, "${banned_ip_login}")
-
+    return
   else if info.pass.length and settings.modules.mycard.enabled and info.pass[0...3] != 'AI#'
     ygopro.stoc_send_chat(client, '${loading_user_info}', ygopro.constants.COLORS.BABYBLUE)
     if info.pass.length <= 8
       ygopro.stoc_die(client, '${invalid_password_length}')
       return
-
-    if info.version != settings.version and settings.alternative_versions.includes(info.version)
-      info.version = settings.version
-      struct = ygopro.structs.get("CTOS_JoinGame")
-      struct._setBuff(buffer)
-      struct.set("version", info.version)
-      buffer = struct.buffer
+    await polyfill_version()
 
     buffer = Buffer.from(info.pass[0...8], 'base64')
 
@@ -2659,33 +2693,28 @@ ygopro.ctos_follow 'JOIN_GAME', true, (buffer, info, client, server, datas)->
 
   else if !client.name or client.name==""
     ygopro.stoc_die(client, "${bad_user_name}")
-
+    return
   else if ROOM_connected_ip[client.ip] > 5
     log.warn("MULTI LOGIN", client.name, client.ip)
     ygopro.stoc_die(client, "${too_much_connection}" + client.ip)
-
+    return
   else if !settings.modules.tournament_mode.enabled and !settings.modules.challonge.enabled and badwordR.level3.test(client.name)
     log.warn("BAD NAME LEVEL 3", client.name, client.ip)
     ygopro.stoc_die(client, "${bad_name_level3}")
-
+    return
   else if !settings.modules.tournament_mode.enabled and !settings.modules.challonge.enabled and badwordR.level2.test(client.name)
     log.warn("BAD NAME LEVEL 2", client.name, client.ip)
     ygopro.stoc_die(client, "${bad_name_level2}")
-
+    return
   else if !settings.modules.tournament_mode.enabled and !settings.modules.challonge.enabled and badwordR.level1.test(client.name)
     log.warn("BAD NAME LEVEL 1", client.name, client.ip)
     ygopro.stoc_die(client, "${bad_name_level1}")
-
+    return
   else if info.pass.length && !ROOM_validate(info.pass)
     ygopro.stoc_die(client, "${invalid_password_room}")
-
+    return
   else
-    if info.version != settings.version and settings.alternative_versions.includes(info.version)
-      info.version = settings.version
-      struct = ygopro.structs.get("CTOS_JoinGame")
-      struct._setBuff(buffer)
-      struct.set("version", info.version)
-      buffer = struct.buffer
+    await polyfill_version()
 
     #log.info 'join_game',info.pass, client.name
     room = await ROOM_find_or_create_by_name(info.pass, client.ip)
@@ -2794,6 +2823,8 @@ ygopro.stoc_follow 'GAME_MSG', true, (buffer, info, client, server, datas)->
   return unless room and !client.reconnecting
   msg = buffer.readInt8(0)
   msg_name = ygopro.constants.MSG[msg]
+  if await msg_polyfill.polyfillGameMsg(client.actual_version, msg_name, buffer)
+    return true
   #console.log client.pos, "MSG", msg_name
   if msg_name == 'RETRY' and room.recovering
     room.finish_recover(true)
@@ -3797,15 +3828,9 @@ ygopro.ctos_follow 'UPDATE_DECK', true, (buffer, info, client, server, datas)->
               found_deck=deck
           if found_deck
             deck_text = await fs.promises.readFile(settings.modules.tournament_mode.deck_path+found_deck,{encoding:"ASCII"})
-            deck_array=deck_text.split(/\r?\n/)
-            deck_main=[]
-            deck_side=[]
-            current_deck=deck_main
-            for line in deck_array
-              if line.indexOf("!side")>=0
-                current_deck=deck_side
-              card=parseInt(line)
-              current_deck.push(card) unless isNaN(card) or line.endsWith("#")
+            deck_obj = YGOProDeck.fromYdkString(deck_text)
+            deck_main=deck_obj.main.concat(deck_obj.extra)
+            deck_side=deck_obj.side
             if _.isEqual(buff_main, deck_main) and _.isEqual(buff_side, deck_side)
               #log.info("deck ok: " + client.name)
               return deck_ok("${deck_correct_part1} #{found_deck} ${deck_correct_part2}")
@@ -3817,11 +3842,13 @@ ygopro.ctos_follow 'UPDATE_DECK', true, (buffer, info, client, server, datas)->
             return deck_bad("#{client.name}${deck_not_found}")
   await return false
 
-ygopro.ctos_follow 'RESPONSE', false, (buffer, info, client, server, datas)->
+ygopro.ctos_follow 'RESPONSE', true, (buffer, info, client, server, datas)->
   room=ROOM_all[client.rid]
-  return unless room and (room.random_type or room.arena)
-  room.refreshLastActiveTime()
-  await return
+  if room and (room.random_type or room.arena)
+    room.refreshLastActiveTime()
+  if await msg_polyfill.polyfillResponse(client.actual_version, client.last_game_msg_title, buffer)
+    return true
+  return false
 
 ygopro.stoc_follow 'TIME_LIMIT', true, (buffer, info, client, server, datas)->
   room=ROOM_all[client.rid]

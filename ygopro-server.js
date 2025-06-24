@@ -2968,9 +2968,8 @@
         preconnect = false;
         if (settings.modules.reconnect.enabled && client.pre_reconnecting_to_room) {
           ctos_filter = ["UPDATE_DECK"];
-        }
-        if (client.name === null) {
-          ctos_filter = ["JOIN_GAME", "PLAYER_INFO"];
+        } else if (client.name === null) {
+          ctos_filter = ["EXTERNAL_ADDRESS", "JOIN_GAME", "PLAYER_INFO"];
           preconnect = true;
         }
         handle_data = (await ygopro.helper.handleBuffer(ctos_buffer, "CTOS", ctos_filter, {
@@ -3691,16 +3690,21 @@
   };
 
   ygopro.stoc_follow('GAME_MSG', true, async function(buffer, info, client, server, datas) {
-    var act_pos, card, chain, check, count, cpos, deck_found, dialogText, found, hint_type, i, id, j, l, len, len1, len2, len3, limbo_found, loc, m, max_loop, msg, msg_name, n, o, oppo_pos, phase, player, playertype, pos, ppos, r_player, reason, ref, ref1, ref2, ref3, ref4, room, trigger_location, val, victoryWordPlayerList, win_pos;
+    var act_pos, card, chain, check, count, cpos, deck_found, dialogText, found, hint_type, i, id, j, l, len, len1, len2, len3, limbo_found, loc, m, max_loop, msg, msg_name, n, o, oppo_pos, phase, player, playertype, pos, ppos, r_player, reason, record_last_game_msg, ref, ref1, ref2, ref3, ref4, room, shrink_count, trigger_location, val, victoryWordPlayerList, win_pos;
     room = ROOM_all[client.rid];
     if (!(room && !client.reconnecting)) {
       return;
     }
     msg = buffer.readInt8(0);
     msg_name = ygopro.constants.MSG[msg];
-    if ((await msg_polyfill.polyfillGameMsg(client.actual_version, msg_name, buffer))) {
+    shrink_count = (await msg_polyfill.polyfillGameMsg(client.actual_version, msg_name, buffer));
+    if (shrink_count === 0x3f3f3f3f) {
       return true;
     }
+    record_last_game_msg = function() {
+      client.last_game_msg = Buffer.from(buffer.slice(0, buffer.length - shrink_count));
+      return client.last_game_msg_title = msg_name;
+    };
     //console.log client.pos, "MSG", msg_name
     if (msg_name === 'RETRY' && room.recovering) {
       room.finish_recover(true);
@@ -3732,13 +3736,11 @@
           return true;
         }
       } else {
-        client.last_game_msg = buffer;
-        client.last_game_msg_title = msg_name;
+        record_last_game_msg();
       }
     // log.info(client.name, client.last_game_msg_title)
     } else if (msg_name !== 'RETRY') {
-      client.last_game_msg = buffer;
-      client.last_game_msg_title = msg_name;
+      record_last_game_msg();
     }
     // log.info(client.name, client.last_game_msg_title)
     if ((msg >= 10 && msg < 30) || msg === 132 || (msg >= 140 && msg <= 144)) { //SELECT和ANNOUNCE开头的消息
@@ -4104,7 +4106,11 @@
       }
       return true;
     }
-    return false;
+    if (shrink_count > 0) {
+      return `_shrink_${shrink_count}`;
+    } else {
+      return false;
+    }
   });
 
   //房间管理
@@ -5157,9 +5163,7 @@
     if (room && (room.random_type || room.arena)) {
       room.refreshLastActiveTime();
     }
-    if ((await msg_polyfill.polyfillResponse(client.actual_version, client.last_game_msg_title, buffer))) {
-      return true;
-    }
+    await msg_polyfill.polyfillResponse(client.actual_version, client.last_game_msg_title, buffer);
     return false;
   });
 

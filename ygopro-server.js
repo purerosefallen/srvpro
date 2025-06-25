@@ -3690,19 +3690,19 @@
   };
 
   ygopro.stoc_follow('GAME_MSG', true, async function(buffer, info, client, server, datas) {
-    var act_pos, card, chain, check, count, cpos, deck_found, dialogText, found, hint_type, i, id, j, l, len, len1, len2, len3, limbo_found, loc, m, max_loop, msg, msg_name, n, o, oppo_pos, phase, player, playertype, pos, ppos, r_player, reason, record_last_game_msg, ref, ref1, ref2, ref3, ref4, room, shrink_count, trigger_location, val, victoryWordPlayerList, win_pos;
+    var act_pos, card, chain, check, count, cpos, deck_found, dialogText, found, hint_type, i, id, j, l, len, len1, len2, len3, limbo_found, loc, m, max_loop, msg, msg_name, n, new_buf, o, oppo_pos, phase, player, playertype, pos, ppos, r_player, reason, record_last_game_msg, ref, ref1, ref2, ref3, ref4, room, trigger_location, val, victoryWordPlayerList, win_pos;
     room = ROOM_all[client.rid];
     if (!(room && !client.reconnecting)) {
       return;
     }
     msg = buffer.readInt8(0);
     msg_name = ygopro.constants.MSG[msg];
-    shrink_count = (await msg_polyfill.polyfillGameMsg(client.actual_version, msg_name, buffer));
-    if (shrink_count === 0x3f3f3f3f) {
-      return true;
+    new_buf = (await msg_polyfill.polyfillGameMsg(client.actual_version, msg_name, buffer));
+    if (new_buf) {
+      buffer = new_buf;
     }
     record_last_game_msg = function() {
-      client.last_game_msg = Buffer.from(buffer.slice(0, buffer.length - shrink_count));
+      client.last_game_msg = buffer;
       return client.last_game_msg_title = msg_name;
     };
     //console.log client.pos, "MSG", msg_name
@@ -4106,8 +4106,8 @@
       }
       return true;
     }
-    if (shrink_count > 0) {
-      return `_shrink_${shrink_count}`;
+    if (new_buf) {
+      return buffer;
     } else {
       return false;
     }

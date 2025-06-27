@@ -13,11 +13,8 @@ exports.UserDialog = void 0;
 const typeorm_1 = require("typeorm");
 const User_1 = require("./User");
 let UserDialog = class UserDialog {
-    id;
-    cardCode;
-    text;
-    user;
 };
+exports.UserDialog = UserDialog;
 __decorate([
     (0, typeorm_1.PrimaryGeneratedColumn)({ unsigned: true, type: "bigint" }),
     __metadata("design:type", Number)
@@ -35,8 +32,7 @@ __decorate([
     (0, typeorm_1.ManyToOne)(() => User_1.User, user => user.dialogues),
     __metadata("design:type", User_1.User)
 ], UserDialog.prototype, "user", void 0);
-UserDialog = __decorate([
+exports.UserDialog = UserDialog = __decorate([
     (0, typeorm_1.Entity)()
 ], UserDialog);
-exports.UserDialog = UserDialog;
 //# sourceMappingURL=UserDialog.js.map

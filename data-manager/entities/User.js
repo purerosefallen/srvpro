@@ -19,17 +19,11 @@ const VipKey_1 = require("./VipKey");
 const moment_1 = __importDefault(require("moment"));
 const CreateAndUpdateTimeBase_1 = require("./CreateAndUpdateTimeBase");
 let User = class User extends CreateAndUpdateTimeBase_1.CreateAndUpdateTimeBase {
-    key;
-    chatColor;
-    vipExpireDate;
     isVip() {
         return this.vipExpireDate && (0, moment_1.default)().isBefore(this.vipExpireDate);
     }
-    victory;
-    words;
-    dialogues;
-    usedKeys;
 };
+exports.User = User;
 __decorate([
     (0, typeorm_1.PrimaryColumn)({ type: "varchar", length: 128 }),
     __metadata("design:type", String)
@@ -59,8 +53,7 @@ __decorate([
     (0, typeorm_1.OneToMany)(() => VipKey_1.VipKey, vipKey => vipKey.usedBy),
     __metadata("design:type", Array)
 ], User.prototype, "usedKeys", void 0);
-User = __decorate([
+exports.User = User = __decorate([
     (0, typeorm_1.Entity)()
 ], User);
-exports.User = User;
 //# sourceMappingURL=User.js.map

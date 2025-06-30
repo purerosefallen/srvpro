@@ -176,7 +176,15 @@ const receiveDecks = function(files, callback) {
     _async.eachSeries(files, async(file) => {
         if (_.endsWith(file.name, ".ydk")) {
             const deck = await readDeck(file.name, file.path);
-            if (deck.main.length >= 40) {
+            const minDeck = config.deck_dashboard_min_deck || 40;
+            const maxDeck = config.deck_dashboard_max_deck || 60;
+            const maxExtra = config.deck_dashboard_max_extra || 15;
+            const maxSide = config.deck_dashboard_max_side || 15;
+            if (deck.main.length >= minDeck
+                && deck.main.length <= maxDeck
+                && deck.extra.length <= maxExtra
+                && deck.side.length <= maxSide
+            ) {
                 fs.createReadStream(file.path).pipe(fs.createWriteStream(config.deck_path + file.name));
                 result.push({
                     file: file.name,

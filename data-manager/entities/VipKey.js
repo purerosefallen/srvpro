@@ -44,4 +44,3 @@ __decorate([
 exports.VipKey = VipKey = __decorate([
     (0, typeorm_1.Entity)()
 ], VipKey);
-//# sourceMappingURL=VipKey.js.map

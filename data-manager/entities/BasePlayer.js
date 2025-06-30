@@ -27,4 +27,3 @@ __decorate([
     (0, typeorm_1.Column)({ type: "tinyint" }),
     __metadata("design:type", Number)
 ], BasePlayer.prototype, "pos", void 0);
-//# sourceMappingURL=BasePlayer.js.map

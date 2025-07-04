@@ -9,29 +9,15 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.UserDialog = void 0;
-const typeorm_1 = require("typeorm");
-const User_1 = require("./User");
-let UserDialog = class UserDialog {
+exports.ClientVersionBlocker = void 0;
+const aragami_1 = require("aragami");
+let ClientVersionBlocker = class ClientVersionBlocker {
 };
-exports.UserDialog = UserDialog;
+exports.ClientVersionBlocker = ClientVersionBlocker;
 __decorate([
-    (0, typeorm_1.PrimaryGeneratedColumn)({ unsigned: true, type: "bigint" }),
-    __metadata("design:type", Number)
-], UserDialog.prototype, "id", void 0);
-__decorate([
-    (0, typeorm_1.Index)(),
-    (0, typeorm_1.Column)("int", { unsigned: true }),
-    __metadata("design:type", Number)
-], UserDialog.prototype, "cardCode", void 0);
-__decorate([
-    (0, typeorm_1.Column)("text"),
+    (0, aragami_1.CacheKey)(),
     __metadata("design:type", String)
-], UserDialog.prototype, "text", void 0);
-__decorate([
-    (0, typeorm_1.ManyToOne)(() => User_1.User, user => user.dialogues),
-    __metadata("design:type", User_1.User)
-], UserDialog.prototype, "user", void 0);
-exports.UserDialog = UserDialog = __decorate([
-    (0, typeorm_1.Entity)()
-], UserDialog);
+], ClientVersionBlocker.prototype, "clientKey", void 0);
+exports.ClientVersionBlocker = ClientVersionBlocker = __decorate([
+    (0, aragami_1.CacheTTL)(60000)
+], ClientVersionBlocker);

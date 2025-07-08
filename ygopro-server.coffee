@@ -103,6 +103,8 @@ Aragami = require('aragami').Aragami
 
 aragami = global.aragami = new Aragami() # we use memory mode only
 
+PQueue = require('p-queue').default
+
 aragami_classes = global.aragami_classes = require('./aragami-classes.js')
 
 msg_polyfill = global.msg_polyfill = require('./msg-polyfill/index.js')
@@ -1016,7 +1018,7 @@ CLIENT_get_authorize_key = global.CLIENT_get_authorize_key = (client) ->
   if !settings.modules.mycard.enabled and client.vpass
     return client.name_vpass
   else if settings.modules.mycard.enabled or settings.modules.tournament_mode.enabled or settings.modules.challonge.enabled or client.is_local
-    return client.name
+    return client.name or client.ip or 'undefined'
   else
     return client.ip + ":" + client.name
 
@@ -1330,8 +1332,11 @@ toIpv6 = global.toIpv6 = (ip) ->
 
 isTrustedProxy = global.isTrustedProxy = (ip) ->
   return settings.modules.trusted_proxies.some((trusted) ->
-    cidr = if trusted.includes('/') then ip6addr.createCIDR(trusted) else ip6addr.createAddrRange(trusted, trusted)
-    return cidr.contains(ip)
+    try
+      cidr = if trusted.includes('/') then ip6addr.createCIDR(trusted) else ip6addr.createAddrRange(trusted, trusted)
+      return cidr.contains(ip)
+    catch e
+      return false
   )
 
 getRealIp = global.getRealIp = (physical_ip, xff_ip) ->
@@ -2242,6 +2247,12 @@ netRequestHandler = (client) ->
 
   client.pre_establish_buffers = new Array()
 
+  client_data_queue = new PQueue 
+    concurrency: 1
+
+  server_data_queue = new PQueue 
+    concurrency: 1
+
   dataHandler = (ctos_buffer) ->
     if client.is_post_watcher
       room=ROOM_all[client.rid]
@@ -2292,13 +2303,18 @@ netRequestHandler = (client) ->
 
     return
 
+  queuedDataHandler = (ctos_buffer) ->
+    if client.isClosed or client.system_kicked
+      return
+    return await client_data_queue.add(() -> dataHandler(ctos_buffer))
+
   if client.isWs
-    client.on 'message', dataHandler
+    client.on 'message', queuedDataHandler
   else
-    client.on 'data', dataHandler
+    client.on 'data', queuedDataHandler
 
   # 服务端到客户端(stoc)
-  server.on 'data', (stoc_buffer)->
+  serverDataHandler = (stoc_buffer)->
     handle_data = await ygopro.helper.handleBuffer(stoc_buffer, "STOC", null, {
       client: server.client,
       server: server
@@ -2312,6 +2328,13 @@ netRequestHandler = (client) ->
       await ygopro.helper.send(server.client, buffer) for buffer in handle_data.datas
 
     return
+
+  queuedServerDataHandler = (stoc_buffer) ->
+    if server.isClosed
+      return
+    return await server_data_queue.add(() -> serverDataHandler(stoc_buffer))
+
+  server.on 'data', queuedServerDataHandler
   return
 
 deck_name_match = global.deck_name_match = (deck_name, player_name) ->
@@ -2392,17 +2415,20 @@ ygopro.ctos_follow 'JOIN_GAME', true, (buffer, info, client, server, datas)->
       }
       CLIENT_kick(client)
       return false
+    client_key = CLIENT_get_authorize_key(client)
+    clean_blocker = () ->
+      aragami.del(aragami_classes.ClientVersionBlocker, client_key)
     if info.version == settings.version
+      await clean_blocker()
       return true
     if settings.alternative_versions.includes(info.version)
-      client_key = CLIENT_get_authorize_key(client)
       if !await aragami.has(aragami_classes.ClientVersionBlocker, client_key)
         blocker_obj = new aragami_classes.ClientVersionBlocker()
         blocker_obj.clientKey = client_key
         await aragami.set(blocker_obj)
         return bad_version("${version_to_polyfill}")
       else
-        await aragami.del(aragami_classes.ClientVersionBlocker, client_key)
+        await clean_blocker()
         return true
     return bad_version(if info.version < settings.version then settings.modules.update else settings.modules.wait_update)
   polyfill_version = () ->

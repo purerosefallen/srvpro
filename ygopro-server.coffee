@@ -3849,13 +3849,21 @@ ygopro.ctos_follow 'UPDATE_DECK', true, (buffer, info, client, server, datas)->
         log.warn("GET ATHLETIC FAIL", client.name, athleticCheckResult.message)
     if settings.modules.tournament_mode.enabled and settings.modules.tournament_mode.deck_check
       if settings.modules.challonge.enabled and client.challonge_info and client.challonge_info.deckbuf
+        areArraysEqual = (arr1, arr2) ->
+          return false unless arr1.length is arr2.length
+          sorted1 = arr1.slice().sort()
+          sorted2 = arr2.slice().sort()
+          sorted1.every (item, index) -> item is sorted2[index]
         trim_deckbuf = (buf) ->
           mainc = buf.readUInt32LE(0)
           sidec = buf.readUInt32LE(4)
           # take first (2 + mainc + sidec) * 4 bytes
           return buf.slice(0, (2 + mainc + sidec) * 4)
-        deckbuf_from_challonge = Buffer.from(client.challonge_info.deckbuf, "base64")
-        if trim_deckbuf(deckbuf_from_challonge).equals(trim_deckbuf(buffer))
+        deckbuf_from_challonge = trim_deckbuf(Buffer.from(client.challonge_info.deckbuf, "base64"))
+        deckbuf = trim_deckbuf(buffer)
+        deck_from_challonge = YGOProDeck.fromUpdateDeckPayload(deckbuf_from_challonge)
+        deck = YGOProDeck.fromUpdateDeckPayload(deckbuf)
+        if areArraysEqual([...deck_from_challonge.main, ...deck_from_challonge.extra], [...deck.main, ...deck.extra]) and areArraysEqual(deck_from_challonge.side, deck.side)
           #log.info("deck ok: " + client.name)
           return deck_ok("${deck_correct_part1} #{client.challonge_info.name} ${deck_correct_part2}")
         else

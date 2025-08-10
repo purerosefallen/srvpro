@@ -5025,7 +5025,7 @@
   });
 
   ygopro.ctos_follow('UPDATE_DECK', true, async function(buffer, info, client, server, datas) {
-    var areArraysEqual, athleticCheckResult, buff_main, buff_side, deck, deck_bad, deck_from_challonge, deck_main, deck_obj, deck_ok, deck_side, deck_text, deckbuf, deckbuf_from_challonge, decks, found_deck, i, j, len, oppo_pos, recover_player_data, recoveredDeck, room, trim_deckbuf, win_pos;
+    var areArraysEqual, athleticCheckResult, buff_main, buff_side, deck, deck_bad, deck_main, deck_obj, deck_ok, deck_side, deck_text, deckbuf_from_challonge, decks, found_deck, i, j, len, oppo_pos, recover_player_data, recoveredDeck, room, trim_deckbuf, win_pos;
     if (settings.modules.reconnect.enabled && client.pre_reconnecting) {
       if (!CLIENT_is_able_to_reconnect(client) && !CLIENT_is_able_to_kick_reconnect(client)) {
         ygopro.stoc_send_chat(client, "${reconnect_failed}", ygopro.constants.COLORS.RED);
@@ -5148,18 +5148,18 @@
         }
       }
       if (settings.modules.tournament_mode.enabled && settings.modules.tournament_mode.deck_check) {
+        areArraysEqual = function(arr1, arr2) {
+          var sorted1, sorted2;
+          if (arr1.length !== arr2.length) {
+            return false;
+          }
+          sorted1 = arr1.slice().sort();
+          sorted2 = arr2.slice().sort();
+          return sorted1.every(function(item, index) {
+            return item === sorted2[index];
+          });
+        };
         if (settings.modules.challonge.enabled && client.challonge_info && client.challonge_info.deckbuf) {
-          areArraysEqual = function(arr1, arr2) {
-            var sorted1, sorted2;
-            if (arr1.length !== arr2.length) {
-              return false;
-            }
-            sorted1 = arr1.slice().sort();
-            sorted2 = arr2.slice().sort();
-            return sorted1.every(function(item, index) {
-              return item === sorted2[index];
-            });
-          };
           trim_deckbuf = function(buf) {
             var mainc, sidec;
             mainc = buf.readUInt32LE(0);
@@ -5168,10 +5168,10 @@
             return buf.slice(0, (2 + mainc + sidec) * 4);
           };
           deckbuf_from_challonge = trim_deckbuf(Buffer.from(client.challonge_info.deckbuf, "base64"));
-          deckbuf = trim_deckbuf(buffer);
-          deck_from_challonge = YGOProDeck.fromUpdateDeckPayload(deckbuf_from_challonge);
-          deck = YGOProDeck.fromUpdateDeckPayload(deckbuf);
-          if (areArraysEqual([...deck_from_challonge.main, ...deck_from_challonge.extra], [...deck.main, ...deck.extra]) && areArraysEqual(deck_from_challonge.side, deck.side)) {
+          deck_obj = YGOProDeck.fromUpdateDeckPayload(deckbuf_from_challonge);
+          deck_main = deck_obj.main.concat(deck_obj.extra);
+          deck_side = deck_obj.side;
+          if (areArraysEqual(buff_main, deck_main) && areArraysEqual(buff_side, deck_side)) {
             //log.info("deck ok: " + client.name)
             return deck_ok(`\${deck_correct_part1} ${client.challonge_info.name} \${deck_correct_part2}`);
           } else {
@@ -5195,7 +5195,7 @@
               deck_obj = YGOProDeck.fromYdkString(deck_text);
               deck_main = deck_obj.main.concat(deck_obj.extra);
               deck_side = deck_obj.side;
-              if (_.isEqual(buff_main, deck_main) && _.isEqual(buff_side, deck_side)) {
+              if (areArraysEqual(buff_main, deck_main) && areArraysEqual(buff_side, deck_side)) {
                 //log.info("deck ok: " + client.name)
                 return deck_ok(`\${deck_correct_part1} ${found_deck} \${deck_correct_part2}`);
               } else {

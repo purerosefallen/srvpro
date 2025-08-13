@@ -25,6 +25,7 @@ qs = require "querystring"
 zlib = require 'zlib'
 axios = require 'axios'
 osu = require 'node-os-utils'
+mustache = require 'mustache'
 
 bunyan = require 'bunyan'
 log = global.log = bunyan.createLogger name: "mycard"
@@ -3682,7 +3683,10 @@ ygopro.ctos_follow 'CHAT', true, (buffer, info, client, server, datas)->
       model: settings.modules.chatgpt.model
     }
     if settings.modules.chatgpt.system_prompt
-      openai_req_body.messages.unshift { role: "system", content: settings.modules.chatgpt.system_prompt.replace }
+      openai_req_body.messages.unshift { role: "system", content: mustache.render(settings.modules.chatgpt.system_prompt, {
+        player: client.name,
+        windbot: room.windbot.name,
+      }) }
     Object.assign(openai_req_body, settings.modules.chatgpt.extra_opts)
     axios.post("#{settings.modules.chatgpt.endpoint}/v1/chat/completions", openai_req_body, {
       timeout: 300000,

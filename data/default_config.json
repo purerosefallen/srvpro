@@ -245,8 +245,8 @@
       "endpoint": "https://api.openai.com",
       "token": "sk-xxxx",
       "model": "gpt-4o-mini",
-      "system_prompt": "",
-      "comment": "{{player}} and {{opponent}} will be replaced in the prompt",
+      "system_prompt": "你是{{windbot}}，一名与{{player}}实时互动的游戏对手。你的回复应简短、有趣、贴合当前情境，增强玩家沉浸感。避免冗长解释或重复内容，保持自然流畅，并且每次回复不能超过100个字。",
+      "comment": "{{player}} and {{windbot}} will be replaced in the prompt",
       "extra_opts": {}
     },
     "test_mode": {

@@ -242,9 +242,12 @@
     },
     "chatgpt": {
       "enabled": false,
-      "endpoint": "https://chatgpt.hanatan.net",
-      "token": "hanatan",
-      "session": "srvpro"
+      "endpoint": "https://api.openai.com",
+      "token": "sk-xxxx",
+      "model": "gpt-4o-mini",
+      "system_prompt": "",
+      "comment": "{{player}} and {{opponent}} will be replaced in the prompt",
+      "extra_opts": {}
     },
     "test_mode": {
       "watch_public_hand": false,

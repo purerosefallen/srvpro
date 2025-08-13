@@ -3674,17 +3674,23 @@ ygopro.ctos_follow 'CHAT', true, (buffer, info, client, server, datas)->
     ygopro.stoc_send_chat(client, "${chat_warn_level0}", ygopro.constants.COLORS.RED)
     cancel = true
   if not cancel and settings.modules.chatgpt.enabled and room.windbot and not client.is_post_watcher and client.pos < 2 and not client.is_local
-    session_key = "#{settings.modules.chatgpt.session}:#{settings.port}:#{CLIENT_get_authorize_key(client)}"
-    axios.post("#{settings.modules.chatgpt.endpoint}/api/chat", {
-      session: session_key,
-      text: msg
-    }, {
+    # session_key = "#{settings.modules.chatgpt.session}:#{settings.port}:#{CLIENT_get_authorize_key(client)}"
+    openai_req_body = {
+      messages: [
+        { role: "user", content: msg }
+      ],
+      model: settings.modules.chatgpt.model
+    }
+    if settings.modules.chatgpt.system_prompt
+      openai_req_body.messages.unshift { role: "system", content: settings.modules.chatgpt.system_prompt.replace }
+    Object.assign(openai_req_body, settings.modules.chatgpt.extra_opts)
+    axios.post("#{settings.modules.chatgpt.endpoint}/v1/chat/completions", openai_req_body, {
       timeout: 300000,
       headers: {
         Authorization: "Bearer #{settings.modules.chatgpt.token}"
       }
     }).then((res) ->
-      text = res.data.data.text
+      text = res.data.choices[0].message.content
       lines = text.split("\n")
       for line in lines
         if line
@@ -3694,7 +3700,7 @@ ygopro.ctos_follow 'CHAT', true, (buffer, info, client, server, datas)->
         else
           ygopro.stoc_send_chat_to_room(room, ' ', 1 - client.pos)
     ).catch((err) ->
-      log.error "CHATGPT ERROR", session_key, err
+      log.error "CHATGPT ERROR", err
     )
     return false
   if !(room and (room.random_type or room.arena)) and not settings.modules.mycard.enabled

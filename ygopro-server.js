@@ -4697,7 +4697,7 @@
   //else
   //log.info 'BIG BROTHER OK', response.statusCode, roomname, body
   ygopro.ctos_follow('CHAT', true, async function(buffer, info, client, server, datas) {
-    var buy_result, cancel, ccolor, cip, cmd, cmsg, cname, code, color, cvalue, isVip, j, key, len, msg, name, oldmsg, player, ref, ref1, room, session_key, struct, sur_player, uname, windbot, word;
+    var buy_result, cancel, ccolor, cip, cmd, cmsg, cname, code, color, cvalue, isVip, j, key, len, msg, name, oldmsg, openai_req_body, player, ref, ref1, room, struct, sur_player, uname, windbot, word;
     room = ROOM_all[client.rid];
     if (!room) {
       return;
@@ -4952,18 +4952,31 @@
       cancel = true;
     }
     if (!cancel && settings.modules.chatgpt.enabled && room.windbot && !client.is_post_watcher && client.pos < 2 && !client.is_local) {
-      session_key = `${settings.modules.chatgpt.session}:${settings.port}:${CLIENT_get_authorize_key(client)}`;
-      axios.post(`${settings.modules.chatgpt.endpoint}/api/chat`, {
-        session: session_key,
-        text: msg
-      }, {
+      // session_key = "#{settings.modules.chatgpt.session}:#{settings.port}:#{CLIENT_get_authorize_key(client)}"
+      openai_req_body = {
+        messages: [
+          {
+            role: "user",
+            content: msg
+          }
+        ],
+        model: settings.modules.chatgpt.model
+      };
+      if (settings.modules.chatgpt.system_prompt) {
+        openai_req_body.messages.unshift({
+          role: "system",
+          content: settings.modules.chatgpt.system_prompt.replace
+        });
+      }
+      Object.assign(openai_req_body, settings.modules.chatgpt.extra_opts);
+      axios.post(`${settings.modules.chatgpt.endpoint}/v1/chat/completions`, openai_req_body, {
         timeout: 300000,
         headers: {
           Authorization: `Bearer ${settings.modules.chatgpt.token}`
         }
       }).then(function(res) {
         var chunk, chunks, l, len1, line, lines, results, text;
-        text = res.data.data.text;
+        text = res.data.choices[0].message.content;
         lines = text.split("\n");
         results = [];
         for (l = 0, len1 = lines.length; l < len1; l++) {
@@ -4985,7 +4998,7 @@
         }
         return results;
       }).catch(function(err) {
-        return log.error("CHATGPT ERROR", session_key, err);
+        return log.error("CHATGPT ERROR", err);
       });
       return false;
     }

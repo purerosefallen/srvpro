@@ -26,6 +26,7 @@ zlib = require 'zlib'
 axios = require 'axios'
 osu = require 'node-os-utils'
 mustache = require 'mustache'
+gpt_tokenizer = require 'gpt-tokenizer/model/gpt-4o'
 
 bunyan = require 'bunyan'
 log = global.log = bunyan.createLogger name: "mycard"
@@ -3677,17 +3678,30 @@ ygopro.ctos_follow 'CHAT', true, (buffer, info, client, server, datas)->
     cancel = true
   if not cancel and settings.modules.chatgpt.enabled and room.windbot and not client.is_post_watcher and client.pos < 2 and not client.is_local
     # session_key = "#{settings.modules.chatgpt.session}:#{settings.port}:#{CLIENT_get_authorize_key(client)}"
+    if room.is_requesting_chatgpt
+      return false
+    room.is_requesting_chatgpt = true
+    if not room.chatgpt_conversation
+      room.chatgpt_conversation = []
     openai_req_body = {
-      messages: [
-        { role: "user", content: msg }
-      ],
+      messages: Array.from(room.chatgpt_conversation),
       model: settings.modules.chatgpt.model
     }
+    openai_req_body.messages.push { role: "user", content: msg }
+    shrink_index = 0
     if settings.modules.chatgpt.system_prompt
       openai_req_body.messages.unshift { role: "system", content: mustache.render(settings.modules.chatgpt.system_prompt, {
         player: client.name,
         windbot: room.windbot.name,
       }, undefined, { escape: (v) -> v }) }
+      shrink_index = 1
+    # trim conversation if too long
+    shrink_count = 0
+    while !gpt_tokenizer.isWithinTokenLimit(openai_req_body.messages, settings.modules.chatgpt.max_tokens)
+      if openai_req_body.messages.length <= (1 + shrink_index)
+        break
+      openai_req_body.messages.splice(shrink_index, 2) # remove the oldest user+assistant pair
+      shrink_count += 2
     Object.assign(openai_req_body, settings.modules.chatgpt.extra_opts)
     axios.post("#{settings.modules.chatgpt.endpoint}/v1/chat/completions", openai_req_body, {
       timeout: 300000,
@@ -3704,8 +3718,15 @@ ygopro.ctos_follow 'CHAT', true, (buffer, info, client, server, datas)->
             ygopro.stoc_send_chat_to_room(room, chunk.join(''), 1 - client.pos)
         else
           ygopro.stoc_send_chat_to_room(room, ' ', 1 - client.pos)
+      # save text
+      if shrink_count > 0
+        room.chatgpt_conversation.splice(0, shrink_count)
+      room.chatgpt_conversation.push { role: "user", content: msg }
+      room.chatgpt_conversation.push { role: "assistant", content: text }
     ).catch((err) ->
       log.error "CHATGPT ERROR", err
+    ).finally(() ->
+      room.is_requesting_chatgpt = false
     )
     return false
   if !(room and (room.random_type or room.arena)) and not settings.modules.mycard.enabled

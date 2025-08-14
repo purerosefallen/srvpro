@@ -4926,6 +4926,10 @@
           content: mustache.render(settings.modules.chatgpt.system_prompt, {
             player: client.name,
             windbot: room.windbot.name
+          }, void 0, {
+            escape: function(v) {
+              return v;
+            }
           })
         });
       }

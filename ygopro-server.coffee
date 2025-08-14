@@ -3687,7 +3687,7 @@ ygopro.ctos_follow 'CHAT', true, (buffer, info, client, server, datas)->
       openai_req_body.messages.unshift { role: "system", content: mustache.render(settings.modules.chatgpt.system_prompt, {
         player: client.name,
         windbot: room.windbot.name,
-      }) }
+      }, undefined, { escape: (v) -> v }) }
     Object.assign(openai_req_body, settings.modules.chatgpt.extra_opts)
     axios.post("#{settings.modules.chatgpt.endpoint}/v1/chat/completions", openai_req_body, {
       timeout: 300000,

@@ -3684,7 +3684,7 @@ ygopro.ctos_follow 'CHAT', true, (buffer, info, client, server, datas)->
     if not room.chatgpt_conversation
       room.chatgpt_conversation = []
     openai_req_body = {
-      messages: Array.from room.chatgpt_conversation,
+      messages: Array.from(room.chatgpt_conversation),
       model: settings.modules.chatgpt.model
     }
     openai_req_body.messages.push { role: "user", content: msg }

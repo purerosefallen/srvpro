@@ -4921,9 +4921,8 @@
         room.chatgpt_conversation = [];
       }
       openai_req_body = {
-        messages: Array.from(room.chatgpt_conversation, {
-          model: settings.modules.chatgpt.model
-        })
+        messages: Array.from(room.chatgpt_conversation),
+        model: settings.modules.chatgpt.model
       };
       openai_req_body.messages.push({
         role: "user",

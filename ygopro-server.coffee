@@ -26,7 +26,7 @@ zlib = require 'zlib'
 axios = require 'axios'
 osu = require 'node-os-utils'
 mustache = require 'mustache'
-gpt_tokenizer = require 'gpt-tokenizer'
+gpt_tokenizer = require 'gpt-tokenizer/model/gpt-4o'
 
 bunyan = require 'bunyan'
 log = global.log = bunyan.createLogger name: "mycard"

@@ -49,7 +49,7 @@
 
   mustache = require('mustache');
 
-  gpt_tokenizer = require('gpt-tokenizer');
+  gpt_tokenizer = require('gpt-tokenizer/model/gpt-4o');
 
   bunyan = require('bunyan');
 

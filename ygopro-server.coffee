@@ -1627,6 +1627,11 @@ class Room
                 path.resolve(settings.modules.ygopro_path, s)
               )
               .join(',')
+            YGOPRO_EXTRA_SCRIPT: settings.modules.extra_script_path
+              .map((s) -> 
+                path.resolve(settings.modules.ygopro_path, s)
+              )
+              .join(',')
           }
         }
       )

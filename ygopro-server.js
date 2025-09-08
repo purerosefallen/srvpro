@@ -2085,6 +2085,9 @@
             ...process.env,
             YGOPRO_EXPANSIONS: settings.modules.expansions_path.map(function(s) {
               return path.resolve(settings.modules.ygopro_path, s);
+            }).join(','),
+            YGOPRO_EXTRA_SCRIPT: settings.modules.extra_script_path.map(function(s) {
+              return path.resolve(settings.modules.ygopro_path, s);
             }).join(',')
           }
         });

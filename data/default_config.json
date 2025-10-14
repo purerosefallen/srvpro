@@ -119,7 +119,8 @@
         "TMR": true
       },
       "ready_time": 20,
-      "hang_timeout": 90
+      "hang_timeout": 90,
+      "extra_modes": {}
     },
     "mysql": {
       "enabled": false,

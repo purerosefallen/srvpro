@@ -857,7 +857,7 @@ ROOM_find_or_create_by_name = global.ROOM_find_or_create_by_name = (name, player
     return await ROOM_find_or_create_random(uname, player_ip)
   if room = ROOM_find_by_name(name)
     return room
-  else if memory_usage >= 95 or (settings.modules.max_rooms_count and rooms_count >= settings.modules.max_rooms_count)
+  else if memory_usage >= settings.modules.max_mem_percentage or (settings.modules.max_rooms_count and rooms_count >= settings.modules.max_rooms_count)
     return null
   else
     room = new Room(name)
@@ -3345,7 +3345,7 @@ ygopro.stoc_send_random_tip = (client)->
   if settings.modules.tips.split_zh and tips.tips_zh.length and client.lang == "zh-cn"
     tip_type = "tips_zh"
   if settings.modules.tips.enabled && tips.tips.length && !client.is_local && !client.closed
-    ygopro.stoc_send_chat(client, "Tip: " + tips[tip_type][Math.floor(Math.random() * tips[tip_type].length)])
+    ygopro.stoc_send_chat(client, settings.modules.tips.prefix + tips[tip_type][Math.floor(Math.random() * tips[tip_type].length)])
   await return
 ygopro.stoc_send_random_tip_to_room = (room)->
   if settings.modules.tips.enabled && tips.tips.length

@@ -1100,7 +1100,7 @@
     }
     if (room = ROOM_find_by_name(name)) {
       return room;
-    } else if (memory_usage >= 95 || (settings.modules.max_rooms_count && rooms_count >= settings.modules.max_rooms_count)) {
+    } else if (memory_usage >= settings.modules.max_mem_percentage || (settings.modules.max_rooms_count && rooms_count >= settings.modules.max_rooms_count)) {
       return null;
     } else {
       room = new Room(name);
@@ -4430,7 +4430,7 @@
       tip_type = "tips_zh";
     }
     if (settings.modules.tips.enabled && tips.tips.length && !client.is_local && !client.closed) {
-      ygopro.stoc_send_chat(client, "Tip: " + tips[tip_type][Math.floor(Math.random() * tips[tip_type].length)]);
+      ygopro.stoc_send_chat(client, settings.modules.tips.prefix + tips[tip_type][Math.floor(Math.random() * tips[tip_type].length)]);
     }
   };
 

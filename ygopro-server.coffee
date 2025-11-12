@@ -25,6 +25,8 @@ qs = require "querystring"
 zlib = require 'zlib'
 axios = require 'axios'
 osu = require 'node-os-utils'
+mustache = require 'mustache'
+gpt_tokenizer = require 'gpt-tokenizer/model/gpt-4o'
 
 bunyan = require 'bunyan'
 log = global.log = bunyan.createLogger name: "mycard"
@@ -511,7 +513,7 @@ loadLFList = (path) ->
     catch
   try
     log.info("Reading YGOPro version.")
-    cppversion = parseInt((await fs.promises.readFile(path.resolve(settings.modules.ygopro_path, 'gframe', 'game.cpp'), 'utf8')).match(/PRO_VERSION = ([x\dABCDEF]+)/)[1], '16')
+    cppversion = parseInt((await fs.promises.readFile(path.resolve(settings.modules.ygopro_path, 'gframe', 'config.h'), 'utf8')).match(/PRO_VERSION = ([x\dABCDEF]+)/)[1], '16')
     await setting_change(settings, "version", cppversion)
     log.info "ygopro version 0x"+settings.version.toString(16), "(from source code)"
   catch
@@ -852,11 +854,11 @@ ROOM_find_or_create_by_name = global.ROOM_find_or_create_by_name = (name, player
   uname=name.toUpperCase()
   if settings.modules.windbot.enabled and (uname[0...2] == 'AI' or (!settings.modules.random_duel.enabled and uname == ''))
     return ROOM_find_or_create_ai(name)
-  if settings.modules.random_duel.enabled and (uname == '' or uname == 'S' or uname == 'M' or uname == 'T' or uname == 'TOR' or uname == 'TR' or uname == 'OOR' or uname == 'OR' or uname == 'TOMR' or uname == 'TMR' or uname == 'OOMR' or uname == 'OMR' or uname == 'CR' or uname == 'CMR')
+  if settings.modules.random_duel.enabled and (uname == '' or uname == 'S' or uname == 'M' or uname == 'T' or uname == 'TOR' or uname == 'TR' or uname == 'OOR' or uname == 'OR' or uname == 'TOMR' or uname == 'TMR' or uname == 'OOMR' or uname == 'OMR' or uname == 'CR' or uname == 'CMR' or settings.modules.random_duel.extra_modes[uname] != undefined)
     return await ROOM_find_or_create_random(uname, player_ip)
   if room = ROOM_find_by_name(name)
     return room
-  else if memory_usage >= 95 or (settings.modules.max_rooms_count and rooms_count >= settings.modules.max_rooms_count)
+  else if memory_usage >= settings.modules.max_mem_percentage or (settings.modules.max_rooms_count and rooms_count >= settings.modules.max_rooms_count)
     return null
   else
     room = new Room(name)
@@ -910,8 +912,9 @@ ROOM_find_or_create_random = global.ROOM_find_or_create_random = (type, player_i
   else
     return null
   if result.random_type=='S' then result.welcome2 = '${random_duel_enter_room_single}'
-  if result.random_type=='M' then result.welcome2 = '${random_duel_enter_room_match}'
-  if result.random_type=='T' then result.welcome2 = '${random_duel_enter_room_tag}'
+  else if result.random_type=='M' then result.welcome2 = '${random_duel_enter_room_match}'
+  else if result.random_type=='T' then result.welcome2 = '${random_duel_enter_room_tag}'
+  else result.welcome2 = settings.modules.random_duel.extra_modes[type]?.welcome ? ''
   return result
 
 ROOM_find_or_create_ai = global.ROOM_find_or_create_ai = (name)->
@@ -1626,6 +1629,11 @@ class Room
                 path.resolve(settings.modules.ygopro_path, s)
               )
               .join(',')
+            YGOPRO_EXTRA_SCRIPT: settings.modules.extra_script_path
+              .map((s) -> 
+                path.resolve(settings.modules.ygopro_path, s)
+              )
+              .join(',')
           }
         }
       )
@@ -1722,6 +1730,7 @@ class Room
       form_data.append 'start', @start_time
       form_data.append 'end', end_time
       form_data.append 'arena', @arena
+      form_data.append 'nonce', Math.random().toString()
 
       post_score_process = () ->
         axios.post settings.modules.arena_mode.post_score, form_data,
@@ -3369,7 +3378,7 @@ ygopro.stoc_send_random_tip = (client)->
   if settings.modules.tips.split_zh and tips.tips_zh.length and client.lang == "zh-cn"
     tip_type = "tips_zh"
   if settings.modules.tips.enabled && tips.tips.length && !client.is_local && !client.closed
-    ygopro.stoc_send_chat(client, "Tip: " + tips[tip_type][Math.floor(Math.random() * tips[tip_type].length)])
+    ygopro.stoc_send_chat(client, settings.modules.tips.prefix + tips[tip_type][Math.floor(Math.random() * tips[tip_type].length)])
   await return
 ygopro.stoc_send_random_tip_to_room = (room)->
   if settings.modules.tips.enabled && tips.tips.length
@@ -3708,14 +3717,30 @@ ygopro.ctos_follow 'CHAT', true, (buffer, info, client, server, datas)->
     cancel = true
   if not cancel and settings.modules.chatgpt.enabled and room.windbot and not client.is_post_watcher and client.pos < 2 and not client.is_local
     # session_key = "#{settings.modules.chatgpt.session}:#{settings.port}:#{CLIENT_get_authorize_key(client)}"
+    if room.is_requesting_chatgpt
+      return false
+    room.is_requesting_chatgpt = true
+    if not room.chatgpt_conversation
+      room.chatgpt_conversation = []
     openai_req_body = {
-      messages: [
-        { role: "user", content: msg }
-      ],
+      messages: Array.from(room.chatgpt_conversation),
       model: settings.modules.chatgpt.model
     }
+    openai_req_body.messages.push { role: "user", content: msg }
+    shrink_index = 0
     if settings.modules.chatgpt.system_prompt
-      openai_req_body.messages.unshift { role: "system", content: settings.modules.chatgpt.system_prompt.replace }
+      openai_req_body.messages.unshift { role: "system", content: mustache.render(settings.modules.chatgpt.system_prompt, {
+        player: client.name,
+        windbot: room.windbot.name,
+      }, undefined, { escape: (v) -> v }) }
+      shrink_index = 1
+    # trim conversation if too long
+    shrink_count = 0
+    while !gpt_tokenizer.isWithinTokenLimit(openai_req_body.messages, settings.modules.chatgpt.max_tokens)
+      if openai_req_body.messages.length <= (1 + shrink_index)
+        break
+      openai_req_body.messages.splice(shrink_index, 2) # remove the oldest user+assistant pair
+      shrink_count += 2
     Object.assign(openai_req_body, settings.modules.chatgpt.extra_opts)
     axios.post("#{settings.modules.chatgpt.endpoint}/v1/chat/completions", openai_req_body, {
       timeout: 300000,
@@ -3732,8 +3757,15 @@ ygopro.ctos_follow 'CHAT', true, (buffer, info, client, server, datas)->
             ygopro.stoc_send_chat_to_room(room, chunk.join(''), 1 - client.pos)
         else
           ygopro.stoc_send_chat_to_room(room, ' ', 1 - client.pos)
+      # save text
+      if shrink_count > 0
+        room.chatgpt_conversation.splice(0, shrink_count)
+      room.chatgpt_conversation.push { role: "user", content: msg }
+      room.chatgpt_conversation.push { role: "assistant", content: text }
     ).catch((err) ->
       log.error "CHATGPT ERROR", err
+    ).finally(() ->
+      room.is_requesting_chatgpt = false
     )
     return false
   if !(room and (room.random_type or room.arena)) and not settings.modules.mycard.enabled
@@ -3899,14 +3931,10 @@ ygopro.ctos_follow 'UPDATE_DECK', true, (buffer, info, client, server, datas)->
       else
         log.warn("GET ATHLETIC FAIL", client.name, athleticCheckResult.message)
     if settings.modules.tournament_mode.enabled and settings.modules.tournament_mode.deck_check
+      client_deck_obj = YGOProDeck.fromUpdateDeckPayload(buffer)
       if settings.modules.challonge.enabled and client.challonge_info and client.challonge_info.deckbuf
-        trim_deckbuf = (buf) ->
-          mainc = buf.readUInt32LE(0)
-          sidec = buf.readUInt32LE(4)
-          # take first (2 + mainc + sidec) * 4 bytes
-          return buf.slice(0, (2 + mainc + sidec) * 4)
-        deckbuf_from_challonge = Buffer.from(client.challonge_info.deckbuf, "base64")
-        if trim_deckbuf(deckbuf_from_challonge).equals(trim_deckbuf(buffer))
+        deck_obj = YGOProDeck.fromUpdateDeckPayload(Buffer.from(client.challonge_info.deckbuf, "base64"))
+        if deck_obj.isEqual(client_deck_obj, { ignoreOrder: true })
           #log.info("deck ok: " + client.name)
           return deck_ok("${deck_correct_part1} #{client.challonge_info.name} ${deck_correct_part2}")
         else
@@ -3915,16 +3943,14 @@ ygopro.ctos_follow 'UPDATE_DECK', true, (buffer, info, client, server, datas)->
       else
         decks = await fs.promises.readdir(settings.modules.tournament_mode.deck_path)
         if decks.length
-          found_deck=false
-          for deck in decks
-            if deck_name_match(deck, client.name)
-              found_deck=deck
+          found_deck = decks.find((deck) -> deck_name_match(deck, client.name))
           if found_deck
             deck_text = await fs.promises.readFile(settings.modules.tournament_mode.deck_path+found_deck,{encoding:"ASCII"})
             deck_obj = YGOProDeck.fromYdkString(deck_text)
-            deck_main=deck_obj.main.concat(deck_obj.extra)
-            deck_side=deck_obj.side
-            if _.isEqual(buff_main, deck_main) and _.isEqual(buff_side, deck_side)
+            # put extra cards to main
+            deck_obj.main = deck_obj.main.concat(deck_obj.extra)
+            deck_obj.extra = []
+            if client_deck_obj.isEqual(deck_obj, { ignoreOrder: true })
               #log.info("deck ok: " + client.name)
               return deck_ok("${deck_correct_part1} #{found_deck} ${deck_correct_part2}")
             else

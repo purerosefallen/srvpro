@@ -1,18 +1,19 @@
 {
 	"compilerOptions": {
 		"module": "commonjs",
-		"target": "esnext",
+		"target": "ES2020",
 		"esModuleInterop": true,
 		"resolveJsonModule": true,
 		"emitDecoratorMetadata": true,
-		"experimentalDecorators": true,
-		"sourceMap": true
+		"experimentalDecorators": true
 	},
 	"compileOnSave": true,
 	"allowJs": true,
 	"include": [
 		"*.ts",
 		"data-manager/*.ts",
-		"data-manager/entities/*.ts"
+		"data-manager/entities/*.ts",
+		"msg-polyfill/*.ts",
+		"msg-polyfill/polyfillers/*.ts"
 	]
 }

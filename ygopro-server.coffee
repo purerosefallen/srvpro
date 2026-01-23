@@ -1,7 +1,6 @@
 # 标准库
 net = require 'net'
 http = require 'http'
-url = require 'url'
 path = require 'path'
 fs = require 'fs'
 os = require 'os'
@@ -296,7 +295,27 @@ loadLFList = (path) ->
       lflists.push({date: moment(list.match(/!([\d\.]+)/)[1], 'YYYY.MM.DD').utcOffset("-08:00"), tcg: list.indexOf('TCG') != -1})
   catch
 
- init = () ->
+call_match_api = (method, path, params) ->
+  if not settings.modules.arena_mode.match_api.enabled
+    return null
+  match_api_url = new URL(settings.modules.arena_mode.match_api.url + "/" + path)
+  match_api_url.searchParams.append('ak', settings.modules.arena_mode.match_api.accesskey)
+  for entry in Object.entries(params)
+    key = entry[0]
+    val = entry[1]
+    match_api_url.searchParams.append(key, val)
+  try
+    res = await axios({
+      method: method
+      url: match_api_url.toString()
+      timeout: 30000
+    })
+    return res.data
+  catch e
+    log.warn 'MATCH API CALL ERROR', method, path, JSON.stringify(params), e.toString()
+    return null
+
+init = () ->
   log.info('Reading config.')
   await createDirectoryIfNotExists("./config")
   await importOldConfig()
@@ -419,6 +438,13 @@ loadLFList = (path) ->
   if settings.modules.neos.trusted_proxies
     settings.modules.trusted_proxies = settings.modules.neos.trusted_proxies
     delete settings.modules.neos.trusted_proxies
+    imported = true
+  # migrate arena_mode.init_post to match_api
+  if settings.modules.arena_mode.init_post
+    settings.modules.arena_mode.match_api = settings.modules.arena_mode.init_post
+    if settings.modules.arena_mode.match_api.url.endsWith('/clear')
+      settings.modules.arena_mode.match_api.url = settings.modules.arena_mode.match_api.url.slice(0, -6)
+    delete settings.modules.arena_mode.init_post
     imported = true
   #finish
   keysFromEnv = Object.keys(process.env).filter((key) => key.startsWith('SRVPRO_'))
@@ -591,16 +617,8 @@ loadLFList = (path) ->
     # pg_client.on 'drain', pg_client.end.bind(pg_client)
     # log.info "loading mycard user..."
     # pg_client.connect()
-    if settings.modules.arena_mode.enabled and settings.modules.arena_mode.init_post.enabled
-      postData = qs.stringify({
-        ak: settings.modules.arena_mode.init_post.accesskey,
-        arena: settings.modules.arena_mode.mode
-      })
-      try
-        log.info("Sending arena init post.")
-        await axios.post(settings.modules.arena_mode.init_post.url + "?" + postData)
-      catch e
-        log.warn 'ARENA INIT POST ERROR', e
+    if settings.modules.arena_mode.enabled
+      await call_match_api('POST', 'clear', {arena: settings.modules.arena_mode.mode})
 
   if settings.modules.challonge.enabled
     Challonge = require('./challonge').Challonge
@@ -1535,9 +1553,6 @@ class Room
         lflist = parseInt(param[3]) - 1
         @hostinfo.lflist = lflist
 
-      for extra_mode_func from extra_mode_list
-        extra_mode_func.call this, rule
-
       if (rule.match /(^|，|,)(NOLFLIST|NF)(，|,|$)/)
         @hostinfo.lflist = -1
 
@@ -1585,6 +1600,11 @@ class Room
         @recover_duel_log_id = parseInt(param[3])
         @recover_buffers = [[], [], [], []]
         @welcome = "${recover_hint}"
+
+    param = name.match /(.+)#/
+    rule = if param then param[1].toUpperCase() else ''
+    for extra_mode_func from extra_mode_list
+      extra_mode_func.call this, rule, name
 
     @hostinfo.replay_mode = 0
 
@@ -2628,6 +2648,11 @@ ygopro.ctos_follow 'JOIN_GAME', true, (buffer, info, client, server, datas)->
               room.welcome = "${athletic_arena_tip}"
             else
               room.welcome = "${entertain_arena_tip}"
+            await call_match_api('POST', 'player-joined', {
+              username: client.name,
+              arena: room.arena,
+              roomname: room.name
+            })
         when 5
           title = info.pass.slice(8).replace(String.fromCharCode(0xFEFF), ' ')
           room = ROOM_find_by_title(title)
@@ -2678,8 +2703,8 @@ ygopro.ctos_follow 'JOIN_GAME', true, (buffer, info, client, server, datas)->
     # users_cache[client.name] = userData.user.id
     possible_ids = [
       userData.user.u16Secret,
-      userData.user.u16SecretPrevious,
-      userData.user.id, # TODO: remove this line after use u16Secret
+      userData.user.u16SecretPrevious
+      # userData.user.id,
     ].filter((id) -> id != null)
     try_decrypt_buffer_with_id = (id) ->
       secret = id % 65535 + 1
@@ -3390,7 +3415,7 @@ load_tips = global.load_tips = ()->
 load_tips_zh = global.load_tips_zh = ()->
   return await loadRemoteData(tips, "tips_zh", settings.modules.tips.get_zh)
 
-ygopro.stoc_follow 'DUEL_START', false, (buffer, info, client, server, datas)->
+ygopro.stoc_follow 'DUEL_START', true, (buffer, info, client, server, datas)->
   room=ROOM_all[client.rid]
   return unless room and !client.reconnecting
   if room.duel_stage == ygopro.constants.DUEL_STAGE.BEGIN #first start
@@ -3400,7 +3425,8 @@ ygopro.stoc_follow 'DUEL_START', false, (buffer, info, client, server, datas)->
     roomlist.start room if !room.windbot and settings.modules.http.websocket_roomlist
     #room.duels = []
     room.dueling_players = []
-    for player in room.get_playing_player()
+    playing_players = room.get_playing_player()
+    for player in playing_players
       room.dueling_players[player.pos] = player
       room.scores[player.name_vpass] = 0
       room.player_datas.push key: CLIENT_get_authorize_key(player), name: player.name, pos: player.pos
@@ -3409,6 +3435,14 @@ ygopro.stoc_follow 'DUEL_START', false, (buffer, info, client, server, datas)->
         ROOM_players_oppentlist[player.ip] = null
     if room.hostinfo.auto_death
       ygopro.stoc_send_chat_to_room(room, "${auto_death_part1}#{room.hostinfo.auto_death}${auto_death_part2}", ygopro.constants.COLORS.BABYBLUE)
+    if room.arena
+      await call_match_api('POST', 'room-start', {
+        usernameA: playing_players[0].name,
+        usernameB: playing_players[1].name,
+        roomname: room.name,
+        starttime: room.start_time,
+        arena: room.arena
+      })
   else if room.duel_stage == ygopro.constants.DUEL_STAGE.SIDING and client.pos < 4 # side deck verified
     client.selected_preduel = true
     if client.side_tcount
@@ -4218,8 +4252,30 @@ if true
 
   httpRequestListener = (request, response)->
     parseQueryString = true
-    u = url.parse(request.url, parseQueryString)
+    base = "http://#{request.headers.host or 'localhost'}"
+    urlObj = new URL(request.url, base)
+    u =
+      pathname: urlObj.pathname
+      query: Object.fromEntries(urlObj.searchParams)
     #pass_validated = u.query.pass == settings.modules.http.password
+
+    # Allow all CORS + PNA (Private Network Access) requests.
+    response.setHeader "Access-Control-Allow-Origin", "*"
+    response.setHeader "Access-Control-Allow-Private-Network", "true"
+    response.setHeader "Vary", "Origin, Access-Control-Request-Headers, Access-Control-Request-Method"
+
+    if (request.method or "").toLowerCase() == "options"
+      requestHeaders = request.headers["access-control-request-headers"]
+      allowHeaders = if Array.isArray(requestHeaders) then requestHeaders.join(", ") else (requestHeaders or "*")
+      response.writeHead(204, {
+        "Access-Control-Allow-Origin": "*"
+        "Access-Control-Allow-Methods": "GET,POST,OPTIONS"
+        "Access-Control-Allow-Headers": allowHeaders
+        "Access-Control-Allow-Private-Network": "true"
+        "Access-Control-Max-Age": "86400"
+      })
+      response.end()
+      return
 
     #console.log(u.query.username, u.query.pass)
     if u.pathname == '/api/getrooms'

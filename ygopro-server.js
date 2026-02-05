@@ -4976,7 +4976,7 @@
       ygopro.stoc_send_chat(client, "${chat_warn_level0}", ygopro.constants.COLORS.RED);
       cancel = true;
     }
-    if (!cancel && settings.modules.chatgpt.enabled && room.windbot && !client.is_post_watcher && client.pos < 2 && !client.is_local) {
+    if (!cancel && settings.modules.chatgpt.enabled && room.windbot && !client.is_post_watcher && client.pos < 2 && !client.is_local && room.hostinfo.mode !== 2) {
       // session_key = "#{settings.modules.chatgpt.session}:#{settings.port}:#{CLIENT_get_authorize_key(client)}"
       if (room.is_requesting_chatgpt) {
         return false;

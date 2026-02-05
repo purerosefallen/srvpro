@@ -3733,7 +3733,7 @@ ygopro.ctos_follow 'CHAT', true, (buffer, info, client, server, datas)->
     client.abuse_count=client.abuse_count+2 if client.abuse_count
     ygopro.stoc_send_chat(client, "${chat_warn_level0}", ygopro.constants.COLORS.RED)
     cancel = true
-  if not cancel and settings.modules.chatgpt.enabled and room.windbot and not client.is_post_watcher and client.pos < 2 and not client.is_local
+  if not cancel and settings.modules.chatgpt.enabled and room.windbot and not client.is_post_watcher and client.pos < 2 and not client.is_local and room.hostinfo.mode != 2
     # session_key = "#{settings.modules.chatgpt.session}:#{settings.port}:#{CLIENT_get_authorize_key(client)}"
     if room.is_requesting_chatgpt
       return false

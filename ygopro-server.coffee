@@ -3768,13 +3768,15 @@ ygopro.ctos_follow 'CHAT', true, (buffer, info, client, server, datas)->
     }).then((res) ->
       text = res.data.choices[0].message.content
       lines = text.split("\n")
+      # 计算消息type: 如果决斗中且玩家后攻，用client.pos；否则用1-client.pos
+      chat_type = if room.duel_stage == ygopro.constants.DUEL_STAGE.DUELING and !client.is_first then client.pos else 1 - client.pos
       for line in lines
         if line
           chunks = _.chunk(line, 100)
           for chunk in chunks
-            ygopro.stoc_send_chat_to_room(room, chunk.join(''), 1 - client.pos)
+            ygopro.stoc_send_chat_to_room(room, chunk.join(''), chat_type)
         else
-          ygopro.stoc_send_chat_to_room(room, ' ', 1 - client.pos)
+          ygopro.stoc_send_chat_to_room(room, ' ', chat_type)
       # save text
       if shrink_count > 0
         room.chatgpt_conversation.splice(0, shrink_count)

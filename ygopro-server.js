@@ -5024,19 +5024,21 @@
           Authorization: `Bearer ${settings.modules.chatgpt.token}`
         }
       }).then(function(res) {
-        var chunk, chunks, l, len1, len2, line, lines, m, text;
+        var chat_type, chunk, chunks, l, len1, len2, line, lines, m, text;
         text = res.data.choices[0].message.content;
         lines = text.split("\n");
+        // 计算消息type: 如果决斗中且玩家后攻，用client.pos；否则用1-client.pos
+        chat_type = room.duel_stage === ygopro.constants.DUEL_STAGE.DUELING && !client.is_first ? client.pos : 1 - client.pos;
         for (l = 0, len1 = lines.length; l < len1; l++) {
           line = lines[l];
           if (line) {
             chunks = _.chunk(line, 100);
             for (m = 0, len2 = chunks.length; m < len2; m++) {
               chunk = chunks[m];
-              ygopro.stoc_send_chat_to_room(room, chunk.join(''), 1 - client.pos);
+              ygopro.stoc_send_chat_to_room(room, chunk.join(''), chat_type);
             }
           } else {
-            ygopro.stoc_send_chat_to_room(room, ' ', 1 - client.pos);
+            ygopro.stoc_send_chat_to_room(room, ' ', chat_type);
           }
         }
         // save text

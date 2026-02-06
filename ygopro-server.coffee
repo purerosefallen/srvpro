@@ -788,10 +788,13 @@ init = () ->
 
   plugin_list = await fs.promises.readdir("./plugins")
   for plugin_filename in plugin_list
-    if plugin_filename.endsWith '.js'
+    if true # plugin_filename.endsWith '.js'
       plugin_path = path.resolve(process.cwd(), "plugins", plugin_filename)
-      require(plugin_path)
-      log.info("Plugin loaded:", plugin_filename)
+      try
+        require(plugin_path)
+        log.info("Plugin loaded:", plugin_filename)
+      catch e
+        log.info("Plugin loaded failed: ", plugin_filename, e)
 
   return
 

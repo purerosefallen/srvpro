@@ -17,8 +17,8 @@
 }
 
 */
-var sqlite3 = require('sqlite3').verbose();
 var fs = require('fs');
+var initSqlJs = require('sql.js');
 var loadJSON = require('load-json-file').sync;
 var config = loadJSON('./config/draw.json');
 var constants = loadJSON('./data/constants.json');
@@ -31,16 +31,32 @@ var LFLIST={"unknown": []};
 var MAIN_POOL=[];
 var EXTRA_POOL=[];
 
+var sqlJsPromise;
+var SQL = null;
+function ensureSqlJs() {
+    if (!sqlJsPromise) {
+        var wasmPath = require.resolve('sql.js/dist/sql-wasm.wasm');
+        sqlJsPromise = initSqlJs({
+            locateFile: function() {
+                return wasmPath;
+            }
+        }).then(function(SQLLib) {
+            SQL = SQLLib;
+            return SQLLib;
+        });
+    }
+    return sqlJsPromise;
+}
+
 function load_database(callback) {
-    var db=new sqlite3.Database(config.dbfile);
-    db.each("select * from datas,texts where datas.id=texts.id", function (err,result) {
-        if (err) {
-            console.log(config.dbfile + ":" + err);
-            return;
-        }
-        else {
+    ensureSqlJs().then(function() {
+        var dbBuffer = fs.readFileSync(config.dbfile);
+        var db = new SQL.Database(dbBuffer);
+        var stmt = db.prepare("select * from datas,texts where datas.id=texts.id");
+        while (stmt.step()) {
+            var result = stmt.getAsObject();
             if ((result.type & constants.TYPES.TYPE_TOKEN) || result.alias) {
-                return;
+                continue;
             }
             CARD_RESULT[result.id] = 0;
             if((result.type & constants.TYPES.TYPE_FUSION) || (result.type & constants.TYPES.TYPE_SYNCHRO) || (result.type & constants.TYPES.TYPE_XYZ) || (result.type & constants.TYPES.TYPE_LINK)) {
@@ -49,7 +65,14 @@ function load_database(callback) {
                 ALL_MAIN_CARDS[result.id] = 3;
             }
         }
-    }, callback);
+        stmt.free();
+        db.close();
+        if (callback) {
+            callback();
+        }
+    }).catch(function(err) {
+        console.log(config.dbfile + ":" + err);
+    });
 }
 
 function load_lflist() {

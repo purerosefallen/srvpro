@@ -13,6 +13,7 @@ _async = require('async')
 
 # ts utility
 utility = require './utility.js'
+tcpDetector = require './tcp-protocol-detector.js'
 
 # 三方库
 _ = global._ = require 'underscore'
@@ -626,9 +627,55 @@ init = () ->
   , 1000
 
   log.info("Starting server.")
-  net.createServer(netRequestHandler).listen settings.port, ->
-    log.info "server started", settings.port
-    return
+  
+  # 用于存储 neos 相关的服务器对象
+  neosHttpServer = null
+  neosWsServer = null
+  
+  # 检查是否需要在主端口上复用检测 HTTP/HTTPS
+  neosReuseMainPort = settings.modules.neos.enabled and (
+    settings.modules.neos.port == settings.port or 
+    settings.modules.neos.reuse_port
+  )
+  
+  if neosReuseMainPort
+    # 需要复用主端口，创建 neos HTTP 服务器但不监听端口
+    log.info "neos will reuse main port #{settings.port}"
+    ws = require 'ws'
+    if settings.modules.http.ssl.enabled
+      https = require 'https'
+      httpsOptions =
+        cert: await fs.promises.readFile(settings.modules.http.ssl.cert)
+        key: await fs.promises.readFile(settings.modules.http.ssl.key)
+      neosHttpServer = https.createServer(httpsOptions)
+    else
+      neosHttpServer = http.createServer()
+    neosWsServer = new ws.WebSocketServer({server: neosHttpServer})
+    neosWsServer.on 'connection', neosRequestListener
+    
+    # 创建主服务器，带协议检测
+    mainTcpServer = net.createServer (socket) ->
+      isHttpsMode = settings.modules.http.ssl.enabled
+      
+      tcpDetector.detectAndHandle socket,
+        # HTTP/HTTPS 处理器
+        (sock, firstChunk) ->
+          # 将 socket 交给 neos HTTP 服务器处理
+          neosHttpServer.emit 'connection', sock
+        ,
+        # 默认处理器（YGOPro 协议）
+        (sock) ->
+          netRequestHandler(sock)
+        ,
+        isHttpsMode
+    
+    mainTcpServer.listen settings.port, ->
+      log.info "server started with neos port reuse", settings.port
+  else
+    # 不需要复用，直接创建普通的 TCP 服务器
+    net.createServer(netRequestHandler).listen settings.port, ->
+      log.info "server started", settings.port
+      return
 
   if settings.modules.stop
     log.info "NOTE: server not open due to config, ", settings.modules.stop
@@ -637,10 +684,11 @@ init = () ->
   main_http_server = http_server
 
   if settings.modules.http.ssl.enabled
-    https = require 'https'
-    httpsOptions =
-      cert: await fs.promises.readFile(settings.modules.http.ssl.cert)
-      key: await fs.promises.readFile(settings.modules.http.ssl.key)
+    unless neosReuseMainPort  # 如果没有在上面创建 https 相关对象
+      https = require 'https'
+      httpsOptions =
+        cert: await fs.promises.readFile(settings.modules.http.ssl.cert)
+        key: await fs.promises.readFile(settings.modules.http.ssl.key)
     https_server = https.createServer(httpsOptions, httpRequestListener)
     https_server.listen settings.modules.http.ssl.port
     main_http_server = https_server
@@ -649,7 +697,8 @@ init = () ->
     roomlist.init main_http_server, ROOM_all
   http_server.listen settings.modules.http.port
 
-  if settings.modules.neos.enabled
+  if settings.modules.neos.enabled and not neosReuseMainPort
+    # neos 启用但不复用主端口，单独监听
     ws = require 'ws'
     neosHttpServer = null
     if settings.modules.http.ssl.enabled
@@ -659,6 +708,7 @@ init = () ->
     neosWsServer = new ws.WebSocketServer({server: neosHttpServer})
     neosWsServer.on 'connection', neosRequestListener
     neosHttpServer.listen settings.modules.neos.port
+    log.info "neos listening on separate port #{settings.modules.neos.port}"
 
   mkdirList = [
     "./plugins",

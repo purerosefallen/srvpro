@@ -208,6 +208,7 @@
     "neos": {
       "enabled": false,
       "port": 7977,
+      "reuse_port": false,
       "ip_header": "x-forwarded-for"
     },
     "test_mode": {

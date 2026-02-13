@@ -1440,6 +1440,7 @@ class Room
     @welcome = ''
     @scores = {}
     @decks = {}
+    @deck_history = {}
     @duel_count = 0
     @death = 0
     @turn = 0
@@ -1749,8 +1750,10 @@ class Room
       form_data.append 'userscoreB', score_array[1].score
       form_data.append 'userdeckA', score_array[0].deck
       form_data.append 'userdeckB', score_array[1].deck
-      form_data.append 'userdeckAHistory', score_array[0].deck_history
-      form_data.append 'userdeckBHistory', score_array[1].deck_history
+      if score_array[0].deck_history?
+        form_data.append 'userdeckAHistory', JSON.stringify(score_array[0].deck_history)
+      if score_array[1].deck_history?
+        form_data.append 'userdeckBHistory', JSON.stringify(score_array[1].deck_history)
       form_data.append 'first', JSON.stringify @first_list
       form_data.append 'replays', JSON.stringify formatted_replays
       form_data.append 'start', @start_time
@@ -3469,7 +3472,6 @@ ygopro.stoc_follow 'DUEL_START', true, (buffer, info, client, server, datas)->
   if client.main and client.main.length
     deck_text = '#ygopro-server deck log\n#main\n' + client.main.join('\n') + '\n!side\n' + client.side.join('\n') + '\n'
     room.decks[client.name] = deck_text unless room.decks[client.name]
-    room.deck_history = {} unless room.deck_history
     room.deck_history[client.name] = [] if !room.deck_history[client.name]
     room.deck_history[client.name].push deck_text
   if settings.modules.deck_log.enabled and deck_text and not client.deck_saved and not room.windbot

@@ -2,6 +2,7 @@
 ARG ALPINE_VERSION=3.23
 ARG NODE_VERSION=24
 ARG GIT_IMAGE=alpine/git:v2.52.0
+ARG USE_APK_CHINA_MIRROR=0
 ARG PREMAKE5_REPO=https://github.com/premake/premake-core.git
 ARG PREMAKE5_VERSION=5.0.0-beta8
 ARG YGOPRO_REPO=https://code.moenext.com/nanahira/ygopro
@@ -75,10 +76,14 @@ RUN \
     ./Bootstrap.sh
 
 FROM node:${NODE_VERSION}-alpine${ALPINE_VERSION} AS base
+ARG USE_APK_CHINA_MIRROR
 LABEL Author="Nanahira <nanahira@momobako.com>"
 
 # apk
-RUN apk add --no-cache python3 && \
+RUN if [ "${USE_APK_CHINA_MIRROR}" = "1" ]; then \
+        sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories; \
+    fi && \
+    apk add --no-cache python3 && \
     ln -sf python3 /usr/bin/python
 
 WORKDIR /ygopro-server
@@ -105,10 +110,11 @@ RUN cd ygopro-src && \
         USE_SIMD="${USE_SIMD}" \
         premake5 gmake && \
     cd build && \
-    make config=release -j$(nproc) && \
+    make config=release LDFLAGS="-Wl,-z,stack-size=1048576" -j$(nproc) && \
     cd .. && \
     mv ./bin/release/ygopro . && \
     strip ygopro && \
+    readelf -W -l ygopro | awk '$1 == "GNU_STACK" { print; ok = ($6 == "0x100000" && $7 == "RW") } END { exit !ok }' && \
     mkdir -p /usr/src/ygopro-dist/gframe /usr/src/ygopro-dist/replay /usr/src/ygopro-dist/expansions && \
     cp ygopro lflist.conf cards.cdb /usr/src/ygopro-dist/ && \
     cp -a script /usr/src/ygopro-dist/script && \

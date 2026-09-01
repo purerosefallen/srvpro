@@ -39,6 +39,7 @@
   "license": "AGPL-3.0",
   "scripts": {
     "build": "coffee -c *.coffee && tsc",
+    "test:duel-finalization": "node duel-finalization.test.js",
     "start": "node ygopro-server.js | bunyan",
     "tournament": "node ygopro-tournament.js",
     "pre": "node ygopro-pre.js",

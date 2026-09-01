@@ -32,7 +32,12 @@ class DuelFinalization
     return {handled: false} if @winHandled
 
     pos = msgPlayer
-    pos = 1 - pos unless client.is_first or pos == 2 or @room.duel_stage != options.duelingStage
+    if (pos == 0 or pos == 1) and @room.duel_stage == options.duelingStage
+      # MSG_WIN uses the engine's first/second side. Convert it first to the
+      # receiving client's view, then from that view to the room's fixed side.
+      clientSide = if @room.hostinfo.mode == 2 then (client.pos & 0x2) >> 1 else client.pos
+      pos = 1 - pos unless client.is_first
+      pos = 1 - pos if clientSide == 1
     pos = pos * 2 if pos >= 0 and @room.hostinfo.mode == 2
 
     # Claim before invoking callbacks so another client cannot apply the same win.

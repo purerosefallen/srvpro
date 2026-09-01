@@ -42,7 +42,7 @@
     }
 
     handleWin(client, msgPlayer, options) {
-      var i, len, player, pos, ref;
+      var clientSide, i, len, player, pos, ref;
       if (!isDuelPlayer(client)) {
         return {
           handled: false
@@ -59,8 +59,16 @@
         };
       }
       pos = msgPlayer;
-      if (!(client.is_first || pos === 2 || this.room.duel_stage !== options.duelingStage)) {
-        pos = 1 - pos;
+      if ((pos === 0 || pos === 1) && this.room.duel_stage === options.duelingStage) {
+        // MSG_WIN uses the engine's first/second side. Convert it first to the
+        // receiving client's view, then from that view to the room's fixed side.
+        clientSide = this.room.hostinfo.mode === 2 ? (client.pos & 0x2) >> 1 : client.pos;
+        if (!client.is_first) {
+          pos = 1 - pos;
+        }
+        if (clientSide === 1) {
+          pos = 1 - pos;
+        }
       }
       if (pos >= 0 && this.room.hostinfo.mode === 2) {
         pos = pos * 2;

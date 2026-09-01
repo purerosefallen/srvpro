@@ -59,8 +59,20 @@ function begin(value, source) {
   return value.duel_finalization.beginIfNeeded(source, STAGE.DUELING, STAGE.END);
 }
 
-function win(value, source, relativeWinner) {
-  return value.duel_finalization.handleWin(source, relativeWinner, OPTIONS);
+function win(value, source, msgWinner) {
+  return value.duel_finalization.handleWin(source, msgWinner, OPTIONS);
+}
+
+function setFirstSide(value, firstSide) {
+  if (value.hostinfo.mode === 2) {
+    value.players[0].is_first = firstSide === 0;
+    value.players[1].is_first = firstSide === 0;
+    value.players[2].is_first = firstSide === 1;
+    value.players[3].is_first = firstSide === 1;
+  } else {
+    value.players[0].is_first = firstSide === 0;
+    value.players[1].is_first = firstSide === 1;
+  }
 }
 
 function persistOnce(value, counter, allowWithoutWin = false) {
@@ -80,7 +92,7 @@ async function testPos1TakesOverThirdDuel() {
 
   assert.strictEqual(begin(value, value.players[1]), true);
   assert.strictEqual(value.duel_count, 3);
-  const result = win(value, value.players[1], 0);
+  const result = win(value, value.players[1], 1);
   assert.deepStrictEqual(result, { handled: true, recovering: false, winner: 1 });
   assert.strictEqual(value.scores.p1, 2);
   assert.deepStrictEqual(value.wins, ['p1']);
@@ -98,17 +110,23 @@ async function testPos1TakesOverThirdDuel() {
   assert.ok(Date.now() - startedAt < 100, 'captured replay should not wait for pos0');
 }
 
-function testEitherPlayerCanWinFirstWithoutDuplication() {
-  for (const firstPos of [0, 1]) {
-    const value = room();
-    begin(value, value.players[firstPos]);
-    const first = win(value, value.players[firstPos], firstPos === 0 ? 0 : 1);
-    const duplicate = win(value, value.players[1 - firstPos], firstPos === 0 ? 1 : 0);
-    assert.strictEqual(first.handled, true);
-    assert.strictEqual(first.winner, 0);
-    assert.strictEqual(duplicate.handled, false);
-    assert.strictEqual(value.scores.p0, 1);
-    assert.deepStrictEqual(value.wins, ['p0']);
+function testWinnerMappingForEitherReceiver() {
+  for (const firstSide of [0, 1]) {
+    for (const sourcePos of [0, 1]) {
+      for (const winnerPos of [0, 1]) {
+        const value = room();
+        setFirstSide(value, firstSide);
+        begin(value, value.players[sourcePos]);
+        const msgWinner = winnerPos === firstSide ? 0 : 1;
+        const first = win(value, value.players[sourcePos], msgWinner);
+        const duplicate = win(value, value.players[1 - sourcePos], msgWinner);
+        assert.strictEqual(first.handled, true);
+        assert.strictEqual(first.winner, winnerPos);
+        assert.strictEqual(duplicate.handled, false);
+        assert.strictEqual(value.scores[`p${winnerPos}`], 1);
+        assert.deepStrictEqual(value.wins, [`p${winnerPos}`]);
+      }
+    }
   }
 }
 
@@ -131,12 +149,14 @@ function testNormalThreeDuelMatch() {
   persistOnce(value, persistence);
 
   value.duel_stage = STAGE.SIDING;
+  setFirstSide(value, 1);
   assert.strictEqual(begin(value, value.players[1]), true);
   win(value, value.players[1], 0);
   value.duel_finalization.captureReplay(value.players[1], Buffer.from('duel-2'));
   persistOnce(value, persistence);
 
   value.duel_stage = STAGE.SIDING;
+  setFirstSide(value, 0);
   assert.strictEqual(begin(value, value.players[0]), true);
   win(value, value.players[0], 0);
   value.duel_finalization.captureReplay(value.players[0], Buffer.from('duel-3'));
@@ -169,19 +189,28 @@ function testDrawIsRecordedOnce() {
 }
 
 function testTagWinnerMapping() {
-  const value = room(2);
-  begin(value, value.players[2]);
-  const result = win(value, value.players[2], 0);
-  assert.strictEqual(result.winner, 2);
-  assert.strictEqual(value.scores.p2, 1);
-  assert.deepStrictEqual(value.wins, ['p2']);
+  for (const firstSide of [0, 1]) {
+    for (const sourcePos of [0, 1, 2, 3]) {
+      for (const winnerSide of [0, 1]) {
+        const value = room(2);
+        setFirstSide(value, firstSide);
+        begin(value, value.players[sourcePos]);
+        const msgWinner = winnerSide === firstSide ? 0 : 1;
+        const winnerPos = winnerSide * 2;
+        const result = win(value, value.players[sourcePos], msgWinner);
+        assert.strictEqual(result.winner, winnerPos);
+        assert.strictEqual(value.scores[`p${winnerPos}`], 1);
+        assert.deepStrictEqual(value.wins, [`p${winnerPos}`]);
+      }
+    }
+  }
 }
 
 function testMatchKillCanBeObservedByPos1() {
   const value = room();
   begin(value, value.players[1]);
   assert.strictEqual(value.duel_finalization.handleMatchKill(value.players[1]), true);
-  win(value, value.players[1], 0);
+  win(value, value.players[1], 1);
   assert.strictEqual(value.scores.p1, 99);
   assert.strictEqual(value.match_kill, false);
 }
@@ -191,7 +220,7 @@ function testFinishedPenaltyIsPreserved() {
   begin(value, value.players[1]);
   value.finished = true;
   value.scores.p0 = -9;
-  const result = win(value, value.players[1], 0);
+  const result = win(value, value.players[1], 1);
   assert.strictEqual(result.handled, true);
   assert.strictEqual(value.winner, 1);
   assert.deepStrictEqual(value.scores, { p0: -9, p1: 0 });
@@ -217,7 +246,7 @@ function testRecoveryFailureIsHandledOnce() {
     recoveryFailures += 1;
   };
   begin(value, value.players[1]);
-  const first = win(value, value.players[1], 0);
+  const first = win(value, value.players[1], 1);
   const duplicate = win(value, value.players[0], 1);
   assert.deepStrictEqual(first, { handled: true, recovering: true, winner: 1 });
   assert.strictEqual(duplicate.handled, false);
@@ -250,7 +279,7 @@ async function testMissingReplayTimesOut() {
 
 async function main() {
   await testPos1TakesOverThirdDuel();
-  testEitherPlayerCanWinFirstWithoutDuplication();
+  testWinnerMappingForEitherReceiver();
   testLateDuplicateStartDoesNotCreateAnotherDuel();
   testNormalThreeDuelMatch();
   testReplayBeforeWinDefersPersistence();

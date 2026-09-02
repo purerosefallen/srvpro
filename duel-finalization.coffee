@@ -1,12 +1,26 @@
 isDuelPlayer = (client) ->
   return !!(client and Number.isInteger(client.pos) and client.pos >= 0 and client.pos <= 3)
 
+getRoomSide = (client, mode) ->
+  return if mode == 2 then (client.pos & 0x2) >> 1 else client.pos
+
+inferSwapped = (client, mode) ->
+  # client.pos is the fixed lobby side; is_first identifies game side 0.
+  roomSide = getRoomSide(client, mode)
+  gameSide = if client.is_first then 0 else 1
+  return roomSide != gameSide
+
+getWinnerSide = (msgPlayer, swapped) ->
+  return msgPlayer unless msgPlayer == 0 or msgPlayer == 1
+  return if swapped then 1 - msgPlayer else msgPlayer
+
 class DuelFinalization
   constructor: (@room) ->
     @reset(0)
 
   reset: (duelCount) ->
     @duelCount = duelCount
+    @swapped = null
     @winHandled = false
     @replayBuffer = null
     @replayPersisted = false
@@ -24,6 +38,7 @@ class DuelFinalization
     @room.turn = 0
     @room.duel_count++
     @reset(@room.duel_count)
+    @swapped = inferSwapped(client, @room.hostinfo.mode)
     return true
 
   handleWin: (client, msgPlayer, options) ->
@@ -31,13 +46,10 @@ class DuelFinalization
     return {handled: false} unless @duelCount > 0 and @duelCount == @room.duel_count
     return {handled: false} if @winHandled
 
-    pos = msgPlayer
-    if (pos == 0 or pos == 1) and @room.duel_stage == options.duelingStage
-      # MSG_WIN uses the engine's first/second side. Convert it first to the
-      # receiving client's view, then from that view to the room's fixed side.
-      clientSide = if @room.hostinfo.mode == 2 then (client.pos & 0x2) >> 1 else client.pos
-      pos = 1 - pos unless client.is_first
-      pos = 1 - pos if clientSide == 1
+    pos = if @room.duel_stage == options.duelingStage and @swapped?
+      getWinnerSide(msgPlayer, @swapped)
+    else
+      msgPlayer
     pos = pos * 2 if pos >= 0 and @room.hostinfo.mode == 2
 
     # Claim before invoking callbacks so another client cannot apply the same win.
@@ -113,6 +125,7 @@ class DuelFinalization
   snapshot: ->
     return {
       duelCount: @duelCount
+      swapped: @swapped
       winHandled: @winHandled
       replayCaptured: !!@replayBuffer
       replayPersisted: @replayPersisted
@@ -121,4 +134,7 @@ class DuelFinalization
 module.exports = {
   DuelFinalization
   isDuelPlayer
+  getRoomSide
+  inferSwapped
+  getWinnerSide
 }

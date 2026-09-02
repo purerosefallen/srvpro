@@ -1,7 +1,13 @@
 'use strict';
 
 const assert = require('assert');
-const { DuelFinalization, isDuelPlayer } = require('./duel-finalization.js');
+const {
+  DuelFinalization,
+  getRoomSide,
+  getWinnerSide,
+  inferSwapped,
+  isDuelPlayer,
+} = require('./duel-finalization.js');
 
 const STAGE = {
   BEGIN: 0,
@@ -63,16 +69,13 @@ function win(value, source, msgWinner) {
   return value.duel_finalization.handleWin(source, msgWinner, OPTIONS);
 }
 
-function setFirstSide(value, firstSide) {
-  if (value.hostinfo.mode === 2) {
-    value.players[0].is_first = firstSide === 0;
-    value.players[1].is_first = firstSide === 0;
-    value.players[2].is_first = firstSide === 1;
-    value.players[3].is_first = firstSide === 1;
-  } else {
-    value.players[0].is_first = firstSide === 0;
-    value.players[1].is_first = firstSide === 1;
-  }
+function applyGframeStart(value, swapped) {
+  const isFirstByPos = value.hostinfo.mode === 2
+    ? (swapped ? [false, false, true, true] : [true, true, false, false])
+    : (swapped ? [false, true] : [true, false]);
+  value.players.forEach((entry, pos) => {
+    entry.is_first = isFirstByPos[pos];
+  });
 }
 
 function persistOnce(value, counter, allowWithoutWin = false) {
@@ -110,21 +113,49 @@ async function testPos1TakesOverThirdDuel() {
   assert.ok(Date.now() - startedAt < 100, 'captured replay should not wait for pos0');
 }
 
-function testWinnerMappingForEitherReceiver() {
-  for (const firstSide of [0, 1]) {
-    for (const sourcePos of [0, 1]) {
-      for (const winnerPos of [0, 1]) {
-        const value = room();
-        setFirstSide(value, firstSide);
-        begin(value, value.players[sourcePos]);
-        const msgWinner = winnerPos === firstSide ? 0 : 1;
-        const first = win(value, value.players[sourcePos], msgWinner);
-        const duplicate = win(value, value.players[1 - sourcePos], msgWinner);
-        assert.strictEqual(first.handled, true);
-        assert.strictEqual(first.winner, winnerPos);
-        assert.strictEqual(duplicate.handled, false);
-        assert.strictEqual(value.scores[`p${winnerPos}`], 1);
-        assert.deepStrictEqual(value.wins, [`p${winnerPos}`]);
+function testSwappedInferenceMatchesGframeStart() {
+  for (const mode of [1, 2]) {
+    for (const swapped of [false, true]) {
+      const value = room(mode);
+      applyGframeStart(value, swapped);
+      value.players.forEach((entry) => {
+        assert.strictEqual(inferSwapped(entry, mode), swapped);
+      });
+      if (mode === 2) {
+        assert.strictEqual(value.players[0].is_first, value.players[1].is_first);
+        assert.strictEqual(value.players[2].is_first, value.players[3].is_first);
+        assert.notStrictEqual(value.players[0].is_first, value.players[2].is_first);
+      }
+    }
+  }
+}
+
+function testWinnerMappingForEveryGframeReceiver() {
+  for (const mode of [1, 2]) {
+    const positions = mode === 2 ? [0, 1, 2, 3] : [0, 1];
+    for (const swapped of [false, true]) {
+      for (const sourcePos of positions) {
+        for (const msgWinner of [0, 1]) {
+          const value = room(mode);
+          applyGframeStart(value, swapped);
+          begin(value, value.players[sourcePos]);
+
+          const winnerSide = swapped ? 1 - msgWinner : msgWinner;
+          const winnerPos = mode === 2 ? winnerSide * 2 : winnerSide;
+          const expectedRoomSides = mode === 2 ? [0, 0, 1, 1] : [0, 1];
+          assert.strictEqual(getRoomSide(value.players[sourcePos], mode), expectedRoomSides[sourcePos]);
+          assert.strictEqual(value.duel_finalization.swapped, swapped);
+          assert.strictEqual(getWinnerSide(msgWinner, swapped), winnerSide);
+
+          const first = win(value, value.players[sourcePos], msgWinner);
+          const duplicatePos = positions.find((pos) => pos !== sourcePos);
+          const duplicate = win(value, value.players[duplicatePos], msgWinner);
+          assert.strictEqual(first.handled, true);
+          assert.strictEqual(first.winner, winnerPos);
+          assert.strictEqual(duplicate.handled, false);
+          assert.strictEqual(value.scores[`p${winnerPos}`], 1);
+          assert.deepStrictEqual(value.wins, [`p${winnerPos}`]);
+        }
       }
     }
   }
@@ -149,14 +180,14 @@ function testNormalThreeDuelMatch() {
   persistOnce(value, persistence);
 
   value.duel_stage = STAGE.SIDING;
-  setFirstSide(value, 1);
+  applyGframeStart(value, true);
   assert.strictEqual(begin(value, value.players[1]), true);
   win(value, value.players[1], 0);
   value.duel_finalization.captureReplay(value.players[1], Buffer.from('duel-2'));
   persistOnce(value, persistence);
 
   value.duel_stage = STAGE.SIDING;
-  setFirstSide(value, 0);
+  applyGframeStart(value, false);
   assert.strictEqual(begin(value, value.players[0]), true);
   win(value, value.players[0], 0);
   value.duel_finalization.captureReplay(value.players[0], Buffer.from('duel-3'));
@@ -186,24 +217,6 @@ function testDrawIsRecordedOnce() {
   assert.deepStrictEqual(value.wins, ['']);
   assert.strictEqual(win(value, value.players[0], 2).handled, false);
   assert.deepStrictEqual(value.scores, { p0: 0, p1: 0 });
-}
-
-function testTagWinnerMapping() {
-  for (const firstSide of [0, 1]) {
-    for (const sourcePos of [0, 1, 2, 3]) {
-      for (const winnerSide of [0, 1]) {
-        const value = room(2);
-        setFirstSide(value, firstSide);
-        begin(value, value.players[sourcePos]);
-        const msgWinner = winnerSide === firstSide ? 0 : 1;
-        const winnerPos = winnerSide * 2;
-        const result = win(value, value.players[sourcePos], msgWinner);
-        assert.strictEqual(result.winner, winnerPos);
-        assert.strictEqual(value.scores[`p${winnerPos}`], 1);
-        assert.deepStrictEqual(value.wins, [`p${winnerPos}`]);
-      }
-    }
-  }
 }
 
 function testMatchKillCanBeObservedByPos1() {
@@ -271,6 +284,7 @@ async function testMissingReplayTimesOut() {
   assert.strictEqual(await value.duel_finalization.waitForReplay(10), false);
   assert.deepStrictEqual(value.duel_finalization.snapshot(), {
     duelCount: 1,
+    swapped: false,
     winHandled: false,
     replayCaptured: false,
     replayPersisted: false,
@@ -279,12 +293,12 @@ async function testMissingReplayTimesOut() {
 
 async function main() {
   await testPos1TakesOverThirdDuel();
-  testWinnerMappingForEitherReceiver();
+  testSwappedInferenceMatchesGframeStart();
+  testWinnerMappingForEveryGframeReceiver();
   testLateDuplicateStartDoesNotCreateAnotherDuel();
   testNormalThreeDuelMatch();
   testReplayBeforeWinDefersPersistence();
   testDrawIsRecordedOnce();
-  testTagWinnerMapping();
   testMatchKillCanBeObservedByPos1();
   testFinishedPenaltyIsPreserved();
   testCrashReplayCanPersistWithoutWin();

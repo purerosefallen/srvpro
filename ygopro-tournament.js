@@ -53,6 +53,7 @@ const load_json_file_1 = require("load-json-file");
 const challonge_1 = require("./challonge");
 const ygopro_deck_encode_1 = __importDefault(require("ygopro-deck-encode"));
 const auth = __importStar(require("./ygopro-auth"));
+const deck_delete_1 = require("./deck-delete");
 const underscore_1 = __importDefault(require("underscore"));
 const settings = (0, load_json_file_1.sync)("./config/config.json");
 const config = settings.modules.tournament_mode;
@@ -130,11 +131,7 @@ const getDecks = async function (callback) {
     }
 };
 const delDeck = function (deck_name, callback) {
-    if (deck_name.startsWith("../") || deck_name.match(/\/\.\.\//)) {
-        //security issue
-        callback(new Error("Invalid deck"));
-    }
-    fs.unlink(config.deck_path + deck_name, callback);
+    (0, deck_delete_1.deleteDeckFile)(config.deck_path, deck_name, callback);
 };
 const clearDecks = async function (callback) {
     try {

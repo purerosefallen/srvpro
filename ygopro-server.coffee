@@ -12,6 +12,7 @@ spawnSync = require('child_process').spawnSync
 
 # ts utility
 utility = require './utility.js'
+DuelFinalization = require('./duel-finalization.js').DuelFinalization
 
 # 三方库
 _ = global._ = require 'underscore'
@@ -1340,6 +1341,45 @@ CLIENT_send_replays_and_kick = global.CLIENT_send_replays_and_kick = (client, ro
   CLIENT_kick(client)
   return
 
+ROOM_try_persist_replay = global.ROOM_try_persist_replay = (room) ->
+  return false unless room and (settings.modules.mysql.enabled or room.has_ygopro_error)
+  allow_without_win = room.finished or room.has_ygopro_error
+  buffer = room.duel_finalization.takeReplayForPersistence(allow_without_win)
+  return false unless buffer
+
+  replay_filename=moment_now.format("YYYY-MM-DD HH-mm-ss")
+  if room.hostinfo.mode != 2
+    for player,i in room.dueling_players
+      replay_filename=replay_filename + (if i > 0 then " VS " else " ") + player.name
+  else
+    for player,i in room.dueling_players
+      replay_filename=replay_filename + (if i > 0 then (if i == 2 then " VS " else " & ") else " ") + player.name
+  replay_filename=replay_filename.replace(/[\/\\\?\*]/g, '_')+".yrp"
+  fs.writeFile(settings.modules.tournament_mode.replay_path + replay_filename, buffer, (err)->
+    if err then log.warn "SAVE REPLAY ERROR", replay_filename, err
+  )
+  if settings.modules.mysql.enabled
+    playerInfos = room.dueling_players.map((player) ->
+      return {
+        name: player.name
+        pos: player.pos
+        realName: player.name_vpass
+        startDeckBuffer: player.start_deckbuf
+        deck: {
+          main: player.main,
+          side: player.side
+        }
+        isFirst: player.is_first
+        winner: player.pos == room.winner
+        ip: player.ip
+        score: room.scores[player.name_vpass]
+        lp: if player.lp? then player.lp else room.hostinfo.start_lp
+        cardCount: if player.card_count? then player.card_count else room.hostinfo.start_hand
+      }
+    )
+    dataManager.saveDuelLog(room.name, room.process_pid, room.cloud_replay_id, replay_filename, room.hostinfo.mode, room.duel_count, playerInfos) # no synchronize here because too slow
+  return true
+
 toIpv4 = global.toIpv4 = (ip) ->
   if ip.startsWith('::ffff:')
     return ip.slice(7)
@@ -1447,6 +1487,7 @@ class Room
     @duel_stage = ygopro.constants.DUEL_STAGE.BEGIN
     @replays = []
     @first_list = []
+    @duel_finalization = new DuelFinalization(this)
     ROOM_all.push this
 
     @hostinfo ||= JSON.parse(JSON.stringify(settings.hostinfo))
@@ -2973,10 +3014,7 @@ ygopro.stoc_follow 'GAME_MSG', true, (buffer, info, client, server, datas)->
     client.is_first = !(playertype & 0xf)
     client.lp = room.hostinfo.start_lp
     client.card_count = 0 if room.hostinfo.mode != 2
-    room.duel_stage = ygopro.constants.DUEL_STAGE.DUELING
-    if client.pos == 0
-      room.turn = 0
-      room.duel_count++
+    if room.duel_finalization.beginIfNeeded(client, ygopro.constants.DUEL_STAGE.DUELING, ygopro.constants.DUEL_STAGE.END)
       if room.death and room.duel_count > 1
         if room.death == -1
           ygopro.stoc_send_chat_to_room(room, "${death_start_final}", ygopro.constants.COLORS.BABYBLUE)
@@ -3033,51 +3071,27 @@ ygopro.stoc_follow 'GAME_MSG', true, (buffer, info, client, server, datas)->
         room.death = -1
         ygopro.stoc_send_chat_to_room(room, "${death_remain_final}", ygopro.constants.COLORS.BABYBLUE)
 
-  if msg_inst instanceof YGOProMsg.YGOProMsgWin and client.pos == 0
-    if room.recovering
-      room.finish_recover(true)
-      return true
-    pos = msg_inst.player
-    pos = 1 - pos unless client.is_first or pos == 2 or room.duel_stage != ygopro.constants.DUEL_STAGE.DUELING
-    pos = pos * 2 if pos >= 0 and room.hostinfo.mode == 2
-    reason = msg_inst.type
-    #log.info {winner: pos, reason: reason}
-    #room.duels.push {winner: pos, reason: reason}
-    room.winner = pos
-    room.turn = 0
-    room.duel_stage = ygopro.constants.DUEL_STAGE.END
-    if settings.modules.heartbeat_detection.enabled
-      for player in room.players
-        player.heartbeat_protected = false
-      delete room.long_resolve_card
-      delete room.long_resolve_chain
-    if room and !room.finished and room.dueling_players[pos]
-      room.winner_name = room.dueling_players[pos].name_vpass
-      #log.info room.dueling_players, pos
-      room.scores[room.winner_name] = room.scores[room.winner_name] + 1
-      room.wins = [] unless room.wins
-      room.wins.push room.winner_name
-      if room.match_kill
-        room.match_kill = false
-        room.scores[room.winner_name] = 99
-      if settings.modules.vip.enabled
+  if msg_inst instanceof YGOProMsg.YGOProMsgWin
+    win_result = room.duel_finalization.handleWin(client, msg_inst.player, {
+      duelingStage: ygopro.constants.DUEL_STAGE.DUELING
+      endStage: ygopro.constants.DUEL_STAGE.END
+      heartbeatDetection: settings.modules.heartbeat_detection.enabled
+      quickDeathRule: settings.modules.http.quick_death_rule
+    })
+    if win_result.handled
+      ROOM_try_persist_replay(room)
+      return true if win_result.recovering
+      pos = win_result.winner
+      if settings.modules.vip.enabled and room.dueling_players[pos]
         victoryWordPlayerList = [room.dueling_players[pos]]
         if room.hostinfo.mode == 2
           victoryWordPlayerList.push(room.dueling_players[pos + 1])
         for player in victoryWordPlayerList when player.victory_words
           room.playLines(player.victory_words)
           break
-    else if room and !room.finished and pos == 2
-      room.wins = [] unless room.wins
-      room.wins.push ''
-    if room.death
-      if settings.modules.http.quick_death_rule == 1 or settings.modules.http.quick_death_rule == 3
-        room.death = -1
-      else
-        room.death = 5
 
-  if msg_inst instanceof YGOProMsg.YGOProMsgMatchKill and client.pos == 0
-    room.match_kill = true
+  if msg_inst instanceof YGOProMsg.YGOProMsgMatchKill
+    room.duel_finalization.handleMatchKill(client)
 
   #lp跟踪
   if msg_inst instanceof YGOProMsg.YGOProMsgDamage and client.pos == 0
@@ -3350,34 +3364,18 @@ ygopro.stoc_follow 'FIELD_FINISH', true, (buffer, info, client, server, datas)->
 ygopro.stoc_follow 'DUEL_END', true, (buffer, info, client, server, datas)->
   room=ROOM_all[client.rid]
   return unless room and settings.modules.replay_delay and room.hostinfo.mode == 1
-  room.replay_seal ?= {}
-  unless room.replay_seal.promise
-    room.replay_seal.promise = new Promise (resolve) ->
-      room.replay_seal.resolve = resolve
-  if client.pos == 0
-    room.replay_seal.sealed = true
-    room.replay_seal.resolve?()
-    await SOCKET_flush_data(client, datas)
-    await CLIENT_send_replays(client, room)
+  replay_captured = await room.duel_finalization.waitForReplay(5000)
+  unless replay_captured
+    state = room.duel_finalization.snapshot()
+    log.warn "DUEL_END replay capture timeout", room.name, room.process_pid, room.duel_count, client.pos, room.replays.length, state
+  await SOCKET_flush_data(client, datas)
+  await CLIENT_send_replays(client, room)
+  unless room.replays_sent_to_watchers
+    room.replays_sent_to_watchers = true
     for player in room.players when player and player.pos > 3
       CLIENT_send_replays(player, room)
     for player in room.watchers when player
       CLIENT_send_replays(player, room)
-  else
-    unless room.replay_seal.sealed
-      timed_out = false
-      await Promise.race [
-        room.replay_seal.promise
-        new Promise (resolve) ->
-          setTimeout (() ->
-            timed_out = true
-            resolve()
-          ), 5000
-      ]
-      if timed_out and !room.replay_seal.sealed
-        log.warn "DUEL_END replay seal timeout", room.name, room.process_pid, room.duel_count, client.pos, room.replays.length
-    await SOCKET_flush_data(client, datas)
-    await CLIENT_send_replays(client, room)
   return false
 
 wait_room_start = (room, time)->
@@ -4189,43 +4187,9 @@ ygopro.stoc_follow 'CHANGE_SIDE', false, (buffer, info, client, server, datas)->
 
 ygopro.stoc_follow 'REPLAY', true, (buffer, info, client, server, datas)->
   room=ROOM_all[client.rid]
-  # Persist the copy delivered to original position 0 so MSG_WIN has updated room.winner first.
-  if room and client.pos == 0 and !room.replays[room.duel_count - 1]
+  if room and room.duel_finalization.captureReplay(client, buffer)
     # console.log("Replay saved: ", room.duel_count - 1, client.pos)
-    room.replays[room.duel_count - 1] = buffer
-    if settings.modules.mysql.enabled or room.has_ygopro_error
-      #console.log('save replay')
-      replay_filename=moment_now.format("YYYY-MM-DD HH-mm-ss")
-      if room.hostinfo.mode != 2
-        for player,i in room.dueling_players
-          replay_filename=replay_filename + (if i > 0 then " VS " else " ") + player.name
-      else
-        for player,i in room.dueling_players
-          replay_filename=replay_filename + (if i > 0 then (if i == 2 then " VS " else " & ") else " ") + player.name
-      replay_filename=replay_filename.replace(/[\/\\\?\*]/g, '_')+".yrp"
-      fs.writeFile(settings.modules.tournament_mode.replay_path + replay_filename, buffer, (err)->
-        if err then log.warn "SAVE REPLAY ERROR", replay_filename, err
-      )
-      if settings.modules.mysql.enabled
-        playerInfos = room.dueling_players.map((player) ->
-          return {
-            name: player.name
-            pos: player.pos
-            realName: player.name_vpass
-            startDeckBuffer: player.start_deckbuf
-            deck: {
-              main: player.main,
-              side: player.side
-            }
-            isFirst: player.is_first
-            winner: player.pos == room.winner
-            ip: player.ip
-            score: room.scores[player.name_vpass]
-            lp: if player.lp? then player.lp else room.hostinfo.start_lp
-            cardCount: if player.card_count? then player.card_count else room.hostinfo.start_hand
-          }
-        )
-        dataManager.saveDuelLog(room.name, room.process_pid, room.cloud_replay_id, replay_filename, room.hostinfo.mode, room.duel_count, playerInfos) # no synchronize here because too slow
+    ROOM_try_persist_replay(room)
   if room and settings.modules.mysql.enabled && settings.modules.cloud_replay.enabled and settings.modules.tournament_mode.enabled
     ygopro.stoc_send_chat(client, "${cloud_replay_delay_part1}R##{room.cloud_replay_id}${cloud_replay_delay_part2}", ygopro.constants.COLORS.BABYBLUE)
   await return settings.modules.tournament_mode.enabled and settings.modules.tournament_mode.block_replay_to_player or settings.modules.replay_delay and room and room.hostinfo.mode == 1

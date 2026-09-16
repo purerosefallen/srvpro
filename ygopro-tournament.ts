@@ -17,6 +17,7 @@ import defaultConfig from "./data/default_config.json";
 import { Challonge } from "./challonge";
 import YGOProDeckEncode from "ygopro-deck-encode";
 import * as auth from "./ygopro-auth";
+import { deleteDeckFile } from "./deck-delete";
 import _ from "underscore";
 
 type Settings = typeof defaultConfig;
@@ -98,11 +99,7 @@ const getDecks = async function (callback: (err: Error | null, decks: any[]) => 
 };
 
 const delDeck = function (deck_name: string, callback: (err?: NodeJS.ErrnoException | null) => void) {
-  if (deck_name.startsWith("../") || deck_name.match(/\/\.\.\//)) {
-    //security issue
-    callback(new Error("Invalid deck"));
-  }
-  fs.unlink(config.deck_path + deck_name, callback);
+  deleteDeckFile(config.deck_path, deck_name, callback);
 };
 
 const clearDecks = async function (callback: (err?: Error | null) => void) {

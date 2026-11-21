@@ -361,7 +361,7 @@
   };
 
   init = async function() {
-    var AthleticChecker, Challonge, DataManager, chat_color, config, cppversion, defaultConfig, default_data, dirPath, dns, e, get_rooms_count, http_server, https, httpsOptions, https_server, imported, j, key, keysFromEnv, l, len, len1, len2, m, main_http_server, mkdirList, neosHttpServer, neosWsServer, plugin_filename, plugin_list, plugin_path, settingKey, val, valFromDefault, ws;
+    var AthleticChecker, Challonge, DataManager, chat_color, config, cppversion, defaultConfig, default_data, dirPath, dns, e, get_rooms_count, has_neos_ip_header, http_server, https, httpsOptions, https_server, imported, j, key, keysFromEnv, l, len, len1, len2, m, main_http_server, mkdirList, neosHttpServer, neosWsServer, plugin_filename, plugin_list, plugin_path, ref, settingKey, val, valFromDefault, ws;
     log.info('Reading config.');
     await createDirectoryIfNotExists("./config");
     await importOldConfig();
@@ -479,6 +479,13 @@
       delete settings.modules.neos.trusted_proxies;
       imported = true;
     }
+    if (Object.prototype.hasOwnProperty.call(settings.modules.neos, 'trusted_proxy_header')) {
+      if (!Object.prototype.hasOwnProperty.call(((ref = config.modules) != null ? ref.neos : void 0) || {}, 'ip_header')) {
+        settings.modules.neos.ip_header = settings.modules.neos.trusted_proxy_header;
+      }
+      delete settings.modules.neos.trusted_proxy_header;
+      imported = true;
+    }
     // migrate arena_mode.init_post to match_api
     if (settings.modules.arena_mode.init_post) {
       settings.modules.arena_mode.match_api = settings.modules.arena_mode.init_post;
@@ -494,9 +501,18 @@
     });
     if (keysFromEnv.length > 0) {
       log.info('Migrating settings from environment variables.');
+      has_neos_ip_header = keysFromEnv.some(function(key) {
+        return key.slice(7).replace(/__/g, ':') === 'modules:neos:ip_header';
+      });
       for (j = 0, len = keysFromEnv.length; j < len; j++) {
         key = keysFromEnv[j];
         settingKey = key.slice(7).replace(/__/g, ':');
+        if (settingKey === 'modules:neos:trusted_proxy_header') {
+          if (has_neos_ip_header) {
+            continue;
+          }
+          settingKey = 'modules:neos:ip_header';
+        }
         val = process.env[key];
         valFromDefault = setting_get(defaultConfig, settingKey);
         if (Array.isArray(valFromDefault)) {
@@ -796,13 +812,13 @@
     }
     if (settings.modules.heartbeat_detection.enabled) {
       setInterval(function() {
-        var l, len1, len2, m, player, ref, room;
+        var l, len1, len2, m, player, ref1, room;
         for (l = 0, len1 = ROOM_all.length; l < len1; l++) {
           room = ROOM_all[l];
           if (room && room.duel_stage !== ygopro.constants.DUEL_STAGE.BEGIN && (room.hostinfo.time_limit === 0 || room.duel_stage !== ygopro.constants.DUEL_STAGE.DUELING) && !room.windbot) {
-            ref = room.get_playing_player();
-            for (m = 0, len2 = ref.length; m < len2; m++) {
-              player = ref[m];
+            ref1 = room.get_playing_player();
+            for (m = 0, len2 = ref1.length; m < len2; m++) {
+              player = ref1[m];
               if (player && (room.duel_stage !== ygopro.constants.DUEL_STAGE.SIDING || player.selected_preduel)) {
                 CLIENT_heartbeat_register(player, true);
               }
@@ -2967,6 +2983,9 @@
   // return true to cancel a synchronous message
   ygopro.ctos_follow('EXTERNAL_ADDRESS', true, function(buffer, info, client, server, datas) {
     var ip_parts, ip_uint, xff_ip;
+    if (client.neos_has_trusted_proxy_ip) {
+      return false;
+    }
     ip_uint = buffer.readUInt32BE(0);
     if (ip_uint === 0) {
       return false;
@@ -5591,7 +5610,7 @@
   ip6addr = require('ip6addr');
 
   neosRequestListener = function(client, req) {
-    var xff_ip;
+    var header_name, xff, xff_ip;
     client.setTimeout = function() {
       return true;
     };
@@ -5600,7 +5619,20 @@
     };
     client.isWs = true;
     client.physical_ip = req.socket.remoteAddress || "";
-    xff_ip = req.headers[settings.modules.neos.trusted_proxy_header];
+    header_name = settings.modules.neos.ip_header;
+    if (typeof header_name === 'string' && header_name) {
+      xff = req.headers[header_name.toLowerCase()];
+    }
+    if (Array.isArray(xff)) {
+      xff = xff[0];
+    }
+    if (typeof xff === 'string') {
+      xff_ip = xff.split(',')[0].trim();
+    }
+    if (!(xff_ip && net.isIP(xff_ip))) {
+      xff_ip = void 0;
+    }
+    client.neos_has_trusted_proxy_ip = !!(xff_ip && isTrustedProxy(client.physical_ip));
     if (CLIENT_set_ip(client, xff_ip)) {
       return;
     }

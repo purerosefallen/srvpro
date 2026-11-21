@@ -362,6 +362,11 @@ init = () ->
     settings.modules.trusted_proxies = settings.modules.neos.trusted_proxies
     delete settings.modules.neos.trusted_proxies
     imported = true
+  if Object::hasOwnProperty.call(settings.modules.neos, 'trusted_proxy_header')
+    if not Object::hasOwnProperty.call(config.modules?.neos or {}, 'ip_header')
+      settings.modules.neos.ip_header = settings.modules.neos.trusted_proxy_header
+    delete settings.modules.neos.trusted_proxy_header
+    imported = true
   # migrate arena_mode.init_post to match_api
   if settings.modules.arena_mode.init_post
     settings.modules.arena_mode.match_api = settings.modules.arena_mode.init_post
@@ -373,8 +378,12 @@ init = () ->
   keysFromEnv = Object.keys(process.env).filter((key) => key.startsWith('SRVPRO_'))
   if keysFromEnv.length > 0
     log.info('Migrating settings from environment variables.')
+    has_neos_ip_header = keysFromEnv.some (key) -> key.slice(7).replace(/__/g, ':') == 'modules:neos:ip_header'
     for key in keysFromEnv
       settingKey = key.slice(7).replace(/__/g, ':')
+      if settingKey == 'modules:neos:trusted_proxy_header'
+        continue if has_neos_ip_header
+        settingKey = 'modules:neos:ip_header'
       val = process.env[key]
       valFromDefault = setting_get(defaultConfig, settingKey)
       if Array.isArray(valFromDefault)
@@ -2210,6 +2219,7 @@ deck_name_match = global.deck_name_match = (deck_name, player_name) ->
 # return true to cancel a synchronous message
 
 ygopro.ctos_follow 'EXTERNAL_ADDRESS', true, (buffer, info, client, server, datas)->
+  return false if client.neos_has_trusted_proxy_ip
   ip_uint = buffer.readUInt32BE(0)
   if ip_uint == 0
     return false
@@ -4178,7 +4188,12 @@ neosRequestListener = (client, req) ->
   client.destroy = () -> client.close()
   client.isWs = true
   client.physical_ip = req.socket.remoteAddress or ""
-  xff_ip = req.headers[settings.modules.neos.trusted_proxy_header]
+  header_name = settings.modules.neos.ip_header
+  xff = req.headers[header_name.toLowerCase()] if typeof header_name == 'string' and header_name
+  xff = xff[0] if Array.isArray(xff)
+  xff_ip = xff.split(',')[0].trim() if typeof xff == 'string'
+  xff_ip = undefined unless xff_ip and net.isIP(xff_ip)
+  client.neos_has_trusted_proxy_ip = !!(xff_ip and isTrustedProxy(client.physical_ip))
   if CLIENT_set_ip(client, xff_ip)
     return
   netRequestHandler(client)

@@ -80,6 +80,7 @@ import_datas = global.import_datas = [
   "side_interval",
   "side_tcount",
   "selected_preduel",
+  "pending_preduel",
   "last_game_msg",
   "last_game_msg_title",
   "last_hint_msg",
@@ -1197,13 +1198,13 @@ CLIENT_send_reconnect_info = global.CLIENT_send_reconnect_info = (client, server
   switch room.duel_stage
     when ygopro.constants.DUEL_STAGE.FINGER
       ygopro.stoc_send(client, 'DUEL_START')
-      if (room.hostinfo.mode != 2 or client.pos == 0 or client.pos == 2) and !client.selected_preduel
+      if client.pending_preduel == 'HAND_RESULT'
         ygopro.stoc_send(client, 'SELECT_HAND')
       client.reconnecting = false
       break
     when ygopro.constants.DUEL_STAGE.FIRSTGO
       ygopro.stoc_send(client, 'DUEL_START')
-      if client == room.selecting_tp # and !client.selected_preduel
+      if client == room.selecting_tp and client.pending_preduel == 'TP_RESULT'
         ygopro.stoc_send(client, 'SELECT_TP')
       client.reconnecting = false
       break
@@ -3293,20 +3294,23 @@ ygopro.ctos_follow 'HS_TOOBSERVER', true, (buffer, info, client, server, datas)-
 
 ygopro.ctos_follow 'HS_KICK', true, (buffer, info, client, server, datas)->
   room=ROOM_all[client.rid]
-  return unless room
-  for player in room.players
-    if player and player.pos == info.pos and player != client
-      if room.arena == "athletic" or settings.modules.challonge.enabled
-        ygopro.stoc_send_chat_to_room(room, "#{client.name} ${kicked_by_system}", ygopro.constants.COLORS.RED)
-        CLIENT_kick(client)
-        return true
-      client.kick_count = if client.kick_count then client.kick_count+1 else 1
-      if client.kick_count>=5 and room.random_type
-        ygopro.stoc_send_chat_to_room(room, "#{client.name} ${kicked_by_system}", ygopro.constants.COLORS.RED)
-        await ROOM_ban_player(player.name, player.ip, "${random_ban_reason_zombie}")
-        CLIENT_kick(client)
-        return true
-      ygopro.stoc_send_chat_to_room(room, "#{player.name} ${kicked_by_player}", ygopro.constants.COLORS.RED)
+  return true unless room and room.duel_stage == ygopro.constants.DUEL_STAGE.BEGIN and client.is_host
+  target_pos = info?.pos
+  seat_count = if room.hostinfo.mode == 2 then 4 else 2
+  return true unless Number.isInteger(target_pos) and 0 <= target_pos < seat_count
+  player = room.players.find((candidate) -> candidate?.pos == target_pos)
+  return true unless player and player != client
+  if room.arena == "athletic" or settings.modules.challonge.enabled
+    ygopro.stoc_send_chat_to_room(room, "#{client.name} ${kicked_by_system}", ygopro.constants.COLORS.RED)
+    CLIENT_kick(client)
+    return true
+  client.kick_count = if client.kick_count then client.kick_count+1 else 1
+  if client.kick_count>=5 and room.random_type
+    ygopro.stoc_send_chat_to_room(room, "#{client.name} ${kicked_by_system}", ygopro.constants.COLORS.RED)
+    await ROOM_ban_player(player.name, player.ip, "${random_ban_reason_zombie}")
+    CLIENT_kick(client)
+    return true
+  ygopro.stoc_send_chat_to_room(room, "#{player.name} ${kicked_by_player}", ygopro.constants.COLORS.RED)
   await return false
 
 ygopro.stoc_follow 'TYPE_CHANGE', true, (buffer, info, client, server, datas)->
@@ -4105,24 +4109,29 @@ ygopro.ctos_follow 'TIME_CONFIRM', false, (buffer, info, client, server, datas)-
     CLIENT_heartbeat_unregister(client)
   await return
 
-ygopro.ctos_follow 'HAND_RESULT', false, (buffer, info, client, server, datas)->
+ygopro.ctos_follow 'HAND_RESULT', true, (buffer, info, client, server, datas)->
   room=ROOM_all[client.rid]
-  return unless room
+  return true unless room and room.duel_stage == ygopro.constants.DUEL_STAGE.FINGER and client.pending_preduel == 'HAND_RESULT'
+  opposite_pos = if room.hostinfo.mode == 2 then 2 else 1
+  return true unless (client.pos == 0 or client.pos == opposite_pos) and room.players.includes(client)
+  return true unless info?.res in [YGOProMsg.HandResult.ROCK, YGOProMsg.HandResult.SCISSORS, YGOProMsg.HandResult.PAPER]
+  client.pending_preduel = undefined
   client.selected_preduel = true
   if room.random_type or room.arena
     if client.pos == 0
       room.waiting_for_player = room.waiting_for_player2
     room.refreshLastActiveTime(true)
-  await return
+  await return false
 
-ygopro.ctos_follow 'TP_RESULT', false, (buffer, info, client, server, datas)->
+ygopro.ctos_follow 'TP_RESULT', true, (buffer, info, client, server, datas)->
   room=ROOM_all[client.rid]
-  return unless room
+  return true unless room and room.duel_stage == ygopro.constants.DUEL_STAGE.FIRSTGO and client.pending_preduel == 'TP_RESULT'
+  return true unless room.selecting_tp == client and room.players.includes(client)
+  return true unless info?.res in [YGOProMsg.TurnPlayerResult.SECOND, YGOProMsg.TurnPlayerResult.FIRST]
+  client.pending_preduel = undefined
   client.selected_preduel = true
-  # room.selecting_tp = false
-  return unless room.random_type or room.arena
-  room.refreshLastActiveTime()
-  await return
+  room.refreshLastActiveTime() if room.random_type or room.arena
+  await return false
 
 ygopro.stoc_follow 'CHAT', true, (buffer, info, client, server, datas)->
   room=ROOM_all[client.rid]
@@ -4162,11 +4171,13 @@ ygopro.stoc_follow 'SELECT_HAND', true, (buffer, info, client, server, datas)->
       room.waiting_for_player2 = client
     room.refreshLastActiveTime(true)
   if room.determine_firstgo
+    client.pending_preduel = undefined
     ygopro.ctos_send(server, "HAND_RESULT", {
       res: if client.pos == 0 then 2 else 1
     })
     return true
   else
+    client.pending_preduel = 'HAND_RESULT'
     client.selected_preduel = false
   await return false
 
@@ -4183,11 +4194,13 @@ ygopro.stoc_follow 'SELECT_TP', true, (buffer, info, client, server, datas)->
     room.waiting_for_player = client
     room.refreshLastActiveTime()
   if room.determine_firstgo
+    client.pending_preduel = undefined
     ygopro.ctos_send(server, "TP_RESULT", {
       res: if room.determine_firstgo == client then 1 else 0
     })
     return true
   else
+    client.pending_preduel = 'TP_RESULT'
     client.selected_preduel = false
     room.selecting_tp = client
   await return false
@@ -4197,6 +4210,7 @@ ygopro.stoc_follow 'CHANGE_SIDE', false, (buffer, info, client, server, datas)->
   return unless room
   if client.pos == 0
     room.duel_stage = ygopro.constants.DUEL_STAGE.SIDING
+  client.pending_preduel = undefined
   client.selected_preduel = false
   if settings.modules.side_timeout
     client.side_tcount = settings.modules.side_timeout
